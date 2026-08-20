@@ -6,6 +6,9 @@ coverage
 *.min.css
 package-lock.json
 
+# drizzle-kit generated migrations and snapshots — not hand-maintained.
+server/src/db/migrations
+
 # Agent/tooling docs are maintained by hand — leave their formatting alone.
 .claude
 .devcontainer

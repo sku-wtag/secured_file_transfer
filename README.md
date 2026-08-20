@@ -1,30 +1,36 @@
-# React + Express Starter
+# Secure File Transfer
 
-A TypeScript monorepo scaffold: a Vite/React client and an Express API server in
-one npm workspace, sharing a single ESLint + Prettier setup. No product code yet
-— the domain is deliberately undecided.
+A TypeScript monorepo: a Vite/React client and an Express API server that let an
+authenticated sender upload a file, encrypted end-to-end in the browser, and
+share a link for one recipient to download it. The server stores only
+ciphertext — see [`plan.md`](plan.md) for the full design and
+[`docs/CRYPTO_PROTOCOL.md`](docs/CRYPTO_PROTOCOL.md) once the crypto core lands.
 
 ## Requirements
 
 - Node `>=22.12.0` (`.nvmrc` pins the version used here: 24)
 - npm 10+ (workspaces)
+- Docker, to run the local PostgreSQL instance
 
 ## Getting started
 
 ```bash
 npm install
-cp .env.example .env     # optional; every value has a sane default
-npm run dev              # client on :5173, server on :3000
+cp .env.example .env         # optional; every value has a sane local default
+docker compose up -d postgres
+npm run dev                  # builds shared/, then client on :5173, server on :3000
 ```
 
-Open <http://localhost:5173>. The placeholder screen calls `/api/health`, which
-Vite proxies to the Express server, so a green status confirms both halves are
-wired together.
+Migrations run automatically at server boot. Open <http://localhost:5173> and
+sign up — with `SMTP_URL` unset, verification and reset emails are written to
+`var/mail/*.eml` instead of sent.
 
 ## Layout
 
 ```
 .
+├── shared/                 # protocol code used by both client and server
+│   └── src/
 ├── client/                 # Vite + React + TypeScript
 │   ├── src/
 │   ├── tsconfig.app.json   # browser sources
@@ -32,32 +38,53 @@ wired together.
 ├── server/                 # Express + TypeScript (Node ESM)
 │   └── src/
 │       ├── app.ts          # app assembly — mount middleware and routers here
-│       ├── index.ts        # process entry: listen + graceful shutdown
+│       ├── index.ts        # process entry: migrate, listen, graceful shutdown
 │       ├── config/env.ts   # zod-validated environment, parsed once at boot
+│       ├── auth/           # sessions, passwords, one-time tokens, mailer
+│       ├── crypto/         # server-side primitives: hashing, field encryption
+│       ├── db/             # drizzle schema, client, migrations
+│       ├── storage/        # blob store (local filesystem behind an interface)
+│       ├── audit/          # append-only audit log
 │       ├── middleware/
 │       └── routes/
-├── eslint.config.js        # one flat config for both workspaces
+├── docker-compose.yml       # local PostgreSQL only — not a deploy artifact
+├── eslint.config.js         # one flat config for all three workspaces
 └── .prettierrc.json
 ```
 
 `app.ts` is kept separate from `index.ts` so tests can mount the app (e.g. with
 `supertest`) without binding a port.
 
+### The `shared` workspace
+
+`shared/` holds code both sides need to agree on byte-for-byte (cookie names,
+and eventually the `SFT1` wire format and crypto). It has a real build step:
+`package.json` resolves to `dist/`, not `src/`, because the compiled production
+server runs under plain `node`, which — unlike `tsx` in dev or Vite in the
+client — does not remap a workspace package's own internal `./foo.js` imports
+back to `./foo.ts` when the package resolves straight to source. `npm run dev`
+and `npm run build` both build `shared` first; if you change something in
+`shared/src` and don't see it take effect, rebuild it
+(`npm run build --workspace shared`).
+
 ## Scripts
 
 Run from the repo root.
 
-| Script                 | What it does                                  |
-| ---------------------- | --------------------------------------------- |
-| `npm run dev`          | Both dev servers, with watch and HMR          |
-| `npm run build`        | Type-check and build server then client       |
-| `npm start`            | Run the built server                          |
-| `npm run lint`         | ESLint across the repo; warnings fail the run |
-| `npm run lint:fix`     | ESLint with autofix                           |
-| `npm run format`       | Prettier write                                |
-| `npm run format:check` | Prettier check                                |
-| `npm run typecheck`    | `tsc --noEmit` in every workspace             |
-| `npm run check`        | format:check + lint + typecheck, in one go    |
+| Script                                   | What it does                                         |
+| ---------------------------------------- | ---------------------------------------------------- |
+| `npm run dev`                            | Build `shared`, then both dev servers with HMR       |
+| `npm run build`                          | Build `shared`, then type-check and build the rest   |
+| `npm start`                              | Run the built server                                 |
+| `npm test`                               | `node --test` over the server and shared suites      |
+| `npm run lint`                           | ESLint across the repo; warnings fail the run        |
+| `npm run lint:fix`                       | ESLint with autofix                                  |
+| `npm run format`                         | Prettier write                                       |
+| `npm run format:check`                   | Prettier check                                       |
+| `npm run typecheck`                      | `tsc --noEmit` in every workspace                    |
+| `npm run check`                          | format:check + lint + typecheck, in one go           |
+| `npm run db:generate --workspace server` | Generate a migration from `db/schema` changes        |
+| `npm run db:migrate --workspace server`  | Apply pending migrations without starting the server |
 
 Target a single workspace with `--workspace`, e.g. `npm run build --workspace client`.
 
@@ -123,8 +150,15 @@ missing or malformed variable fails immediately instead of surfacing as
 `undefined` inside a request handler. Add new variables to that schema and to
 `.env.example`. Never commit `.env` — `.gitignore` excludes it.
 
-## Not included
+`FIELD_ENCRYPTION_KEY`, `EMAIL_LOOKUP_PEPPER`, and `SMTP_URL` have insecure or
+absent local defaults and are required whenever `NODE_ENV=production`; boot
+fails immediately if one is missing.
 
-Deliberately left out until the product idea decides them: database and ORM,
-authentication, a test runner, routing/state management on the client, and
-Docker/deploy config.
+## Not included yet
+
+File upload and download, transfer management, and the `SFT1` end-to-end
+encryption protocol itself — see `plan.md` for the phased build order. Also out
+of scope for this repo: object storage adapters, general deploy/CI
+configuration (`docker-compose.yml` here runs Postgres for local development
+only), and virus scanning (deliberately incompatible with zero-knowledge
+storage — see `plan.md` §2).

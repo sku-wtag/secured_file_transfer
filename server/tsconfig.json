@@ -24,5 +24,6 @@
     "exactOptionalPropertyTypes": true,
     "erasableSyntaxOnly": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.tools.json" }]
 }

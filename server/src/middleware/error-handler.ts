@@ -16,17 +16,12 @@ export function notFoundHandler(req: Request, res: Response): void {
   res.status(404).json({ error: 'Not Found', path: req.originalUrl });
 }
 
-export function errorHandler(
-  err: unknown,
-  _req: Request,
-  res: Response,
-  _next: NextFunction,
-): void {
+export function errorHandler(err: unknown, req: Request, res: Response, _next: NextFunction): void {
   const status = err instanceof HttpError ? err.status : 500;
   const message = err instanceof Error ? err.message : 'Internal Server Error';
 
   if (status >= 500) {
-    console.error(err);
+    req.log.error({ err }, 'unhandled request error');
   }
 
   res.status(status).json({

@@ -1,9 +1,12 @@
 import './index.css';
+import './layout.css';
 
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { RouterProvider } from 'react-router';
 
-import App from './App.tsx';
+import { SessionProvider } from './api/session.tsx';
+import { router } from './routes.tsx';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -12,6 +15,8 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <SessionProvider>
+      <RouterProvider router={router} />
+    </SessionProvider>
   </StrictMode>,
 );

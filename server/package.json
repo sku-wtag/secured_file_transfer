@@ -6,23 +6,37 @@
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc --project tsconfig.json",
+    "build": "tsc --project tsconfig.json && cp -r src/db/migrations dist/db/migrations",
     "start": "node dist/index.js",
-    "typecheck": "tsc --project tsconfig.json --noEmit"
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx -e \"import('./src/db/migrate.js').then((m) => m.runMigrations())\""
   },
   "dependencies": {
+    "@node-rs/argon2": "^2.1.0",
+    "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
+    "drizzle-orm": "^0.45.2",
     "express": "^5.2.1",
     "helmet": "^8.3.0",
-    "morgan": "^1.11.0",
+    "nodemailer": "^9.0.5",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "postgres": "^3.4.9",
+    "rate-limiter-flexible": "^11.2.0",
+    "shared": "^0.0.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
-    "@types/morgan": "^1.9.10",
     "@types/node": "^24.13.3",
+    "@types/nodemailer": "^8.0.1",
+    "@types/supertest": "^7.2.1",
+    "drizzle-kit": "^0.31.10",
+    "supertest": "^7.2.2",
     "tsx": "^4.23.12",
     "typescript": "^6.0.3"
   }

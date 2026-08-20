@@ -1,23 +1,27 @@
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
-import helmet from 'helmet';
-import morgan from 'morgan';
 
-import { env, isProduction } from './config/env.js';
+import { env } from './config/env.js';
+import { ensureCsrfCookie, requireCsrf } from './middleware/csrf.js';
 import { errorHandler, notFoundHandler } from './middleware/error-handler.js';
+import { requestContext } from './middleware/request-context.js';
+import { securityHeaders } from './middleware/security-headers.js';
 import { apiRouter } from './routes/index.js';
 
 export function createApp() {
   const app = express();
 
-  app.set('trust proxy', 1);
+  app.set('trust proxy', env.TRUSTED_PROXY_HOPS);
   app.disable('x-powered-by');
 
-  app.use(helmet());
+  app.use(requestContext());
+  app.use(securityHeaders());
   app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
-  app.use(express.json({ limit: '1mb' }));
-  app.use(express.urlencoded({ extended: true }));
-  app.use(morgan(isProduction ? 'combined' : 'dev'));
+  app.use(express.json({ limit: '64kb' }));
+  app.use(express.urlencoded({ extended: true, limit: '64kb' }));
+  app.use(cookieParser());
+  app.use('/api', ensureCsrfCookie, requireCsrf);
 
   app.use('/api', apiRouter);
 

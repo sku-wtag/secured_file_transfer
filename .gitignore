@@ -6,8 +6,12 @@ node_modules/
 # Build output
 dist/
 dist-ssr/
+dist-tools/
 build/
 *.tsbuildinfo
+
+# App runtime data
+var/
 
 # Environment
 .env
