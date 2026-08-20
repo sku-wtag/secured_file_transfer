@@ -8,29 +8,54 @@ import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-/**
- * Single flat config for the whole monorepo. Blocks are ordered
- * general -> specific: shared baseline, then workspace-specific layers, then
- * `prettierConfig` last so no stylistic rule can fight the formatter.
- *
- * ESLint is held at v9: `eslint-plugin-react` and `eslint-plugin-jsx-a11y`
- * still declare peers only up to ^9, so moving to v10 today means dropping
- * accessibility linting. Revisit once both ship v10 support.
- */
+const toolingDirective =
+  /^\s*(eslint[-\s]|globals?\s|exported\s|@ts-|prettier-ignore|\/\s*<reference|(istanbul|c8|v8)\s+ignore)/;
+
+const localRules = {
+  rules: {
+    'no-comments': {
+      meta: {
+        type: 'problem',
+        schema: [],
+        messages: {
+          removeComment:
+            'Comments are not used in this repo. Rename it, extract a named function, or model the type so the code states this.',
+        },
+      },
+      create(context) {
+        return {
+          Program() {
+            for (const comment of context.sourceCode.getAllComments()) {
+              if (toolingDirective.test(comment.value)) continue;
+              context.report({ loc: comment.loc, messageId: 'removeComment' });
+            }
+          },
+        };
+      },
+    },
+  },
+};
+
 export default tseslint.config(
   {
     name: 'app/ignores',
     ignores: ['**/dist/**', '**/build/**', '**/coverage/**', '**/node_modules/**', '**/*.min.js'],
   },
 
-  // ---------------------------------------------------------------- baseline
   {
     name: 'app/baseline',
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
     extends: [js.configs.recommended],
-    plugins: { 'simple-import-sort': simpleImportSort },
+    plugins: { 'simple-import-sort': simpleImportSort, local: localRules },
     linterOptions: { reportUnusedDisableDirectives: 'error' },
     rules: {
+      'local/no-comments': 'error',
+      'max-lines': ['error', { max: 300, skipBlankLines: true, skipComments: true }],
+      'max-lines-per-function': ['error', { max: 60, skipBlankLines: true, skipComments: true }],
+      'max-depth': ['error', 3],
+      'max-params': ['error', 4],
+      'max-nested-callbacks': ['error', 3],
+      complexity: ['error', 10],
       'simple-import-sort/imports': 'error',
       'simple-import-sort/exports': 'error',
       eqeqeq: ['error', 'always', { null: 'ignore' }],
@@ -44,15 +69,12 @@ export default tseslint.config(
     },
   },
 
-  // ------------------------------------------------- typescript, type-aware
   {
     name: 'app/typescript',
     files: ['**/*.{ts,tsx}'],
     extends: [tseslint.configs.strictTypeChecked, tseslint.configs.stylisticTypeChecked],
     languageOptions: {
       parserOptions: {
-        // Resolves each file against the nearest tsconfig, so the three
-        // project configs (client app, client node, server) all work.
         projectService: true,
         tsconfigRootDir: import.meta.dirname,
       },
@@ -69,14 +91,12 @@ export default tseslint.config(
           ignoreRestSiblings: true,
         },
       ],
-      // `verbatimModuleSyntax` is on, so type-only imports must be explicit.
       '@typescript-eslint/consistent-type-imports': [
         'error',
         { prefer: 'type-imports', fixStyle: 'separate-type-imports' },
       ],
       '@typescript-eslint/no-import-type-side-effects': 'error',
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
-      // JSX attributes routinely take async handlers whose promise is ignored.
       '@typescript-eslint/no-misused-promises': [
         'error',
         { checksVoidReturn: { attributes: false } },
@@ -86,7 +106,6 @@ export default tseslint.config(
     },
   },
 
-  // -------------------------------------------------------------- client (react)
   {
     name: 'app/client',
     files: ['client/**/*.{ts,tsx}'],
@@ -104,7 +123,6 @@ export default tseslint.config(
     settings: { react: { version: 'detect' } },
     rules: {
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
-      // TypeScript already checks props; prop-types would be duplicate work.
       'react/prop-types': 'off',
       'react/jsx-no-target-blank': ['error', { allowReferrer: false }],
       'react/self-closing-comp': 'error',
@@ -113,18 +131,13 @@ export default tseslint.config(
     },
   },
 
-  // -------------------------------------------------------------- server (node)
   {
     name: 'app/server',
     files: ['server/**/*.ts'],
     languageOptions: { globals: globals.node },
-    rules: {
-      // The server logs to stdout/stderr by design.
-      'no-console': 'off',
-    },
+    rules: { 'no-console': 'off' },
   },
 
-  // --------------------------------------------- plain JS config files
   {
     name: 'app/config-files',
     files: ['**/*.{js,mjs,cjs}'],

@@ -12,10 +12,6 @@ type ApiState =
   | { kind: 'ready'; health: HealthResponse }
   | { kind: 'error'; message: string };
 
-/**
- * Placeholder screen that also proves the client -> server wiring works:
- * `/api/health` is proxied to the Express server in dev (see vite.config.ts).
- */
 export default function App() {
   const [state, setState] = useState<ApiState>({ kind: 'loading' });
 

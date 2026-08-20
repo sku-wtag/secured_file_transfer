@@ -1,15 +1,10 @@
 import { config as loadDotenv } from 'dotenv';
 import { z } from 'zod';
 
-// Loaded here rather than in `index.ts` because ESM hoists imports: any module
-// that reads `process.env` at import time must see the file already applied.
-// Workspace-local `.env` wins over a shared one at the repo root.
-loadDotenv({ path: ['.env', '../.env'], quiet: true });
+const envFilesHighestPrecedenceFirst = ['.env', '../.env'];
 
-/**
- * Parsed once at boot so a misconfigured environment fails fast and loudly
- * instead of surfacing as an undefined value deep in a request handler.
- */
+loadDotenv({ path: envFilesHighestPrecedenceFirst, quiet: true });
+
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),

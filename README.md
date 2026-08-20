@@ -69,8 +69,13 @@ ESLint never reports a rule the formatter would just rewrite.
 
 `eslint.config.js` layers, general to specific:
 
-1. **Baseline** — `@eslint/js` recommended, plus import sorting
-   (`simple-import-sort`) and a few unambiguous correctness rules.
+1. **Baseline** — `@eslint/js` recommended, import sorting
+   (`simple-import-sort`), a few unambiguous correctness rules, and the two
+   house rules: `local/no-comments` (a local rule rejecting every prose
+   comment, so code must explain itself through names and types; machine
+   directives such as `eslint-disable` and `@ts-expect-error` are exempt) and
+   size limits — `max-lines` 300 per file, `max-lines-per-function` 60,
+   `max-depth` 3, `complexity` 10, `max-params` 4.
 2. **TypeScript** — `strictTypeChecked` + `stylisticTypeChecked` with
    type-aware linting via `projectService`, which resolves each file against
    its nearest `tsconfig.json`. This catches real bugs (floating promises,
@@ -85,6 +90,10 @@ ESLint never reports a rule the formatter would just rewrite.
 
 Unused variables are allowed when prefixed `_`, which is what makes Express's
 arity-based error middleware (`(err, _req, res, _next)`) lint clean.
+
+Because comments are a lint error everywhere, reasoning that needs prose lives in
+this README, in `docs/`, or in a pull request description — reviewed places that
+cannot silently drift away from the code they describe.
 
 ### ESLint version
 

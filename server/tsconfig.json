@@ -4,7 +4,6 @@
     "lib": ["ES2023"],
     "types": ["node"],
 
-    /* Node ESM: relative imports must carry the `.js` extension. */
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "moduleDetection": "force",
@@ -16,7 +15,6 @@
     "declaration": false,
     "skipLibCheck": true,
 
-    /* Strictness */
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
