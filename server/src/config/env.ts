@@ -12,6 +12,10 @@ const devOnlyDefaults = {
   EMAIL_LOOKUP_PEPPER: 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
 } as const;
 
+function blankToUndefined(value: unknown): unknown {
+  return value === '' ? undefined : value;
+}
+
 const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -23,11 +27,11 @@ const envSchema = z
     DATABASE_URL: z.url().default('postgres://app:app@localhost:5433/app'),
     BLOB_ROOT: z.string().min(1).default('var/blobs'),
 
-    FIELD_ENCRYPTION_KEY: z.string().optional(),
-    EMAIL_LOOKUP_PEPPER: z.string().optional(),
+    FIELD_ENCRYPTION_KEY: z.preprocess(blankToUndefined, z.string().optional()),
+    EMAIL_LOOKUP_PEPPER: z.preprocess(blankToUndefined, z.string().optional()),
 
-    SMTP_URL: z.url().optional(),
-    MAIL_FROM: z.email().default('no-reply@localhost'),
+    SMTP_URL: z.preprocess(blankToUndefined, z.url().optional()),
+    MAIL_FROM: z.preprocess(blankToUndefined, z.email().default('no-reply@example.com')),
 
     MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(2_147_483_648),
     MAX_CHUNK_BYTES: z.coerce.number().int().positive().default(4_194_320),

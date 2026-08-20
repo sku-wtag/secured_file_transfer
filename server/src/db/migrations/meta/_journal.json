@@ -8,6 +8,34 @@
       "when": 1787252664089,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787258003391,
+      "tag": "0001_transfers",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787258312353,
+      "tag": "0002_downloads",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787259244105,
+      "tag": "0003_password-gate",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787260855215,
+      "tag": "0004_fix-byte-count-overflow",
+      "breakpoints": true
     }
   ]
 }

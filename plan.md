@@ -1,6 +1,9 @@
 # Secure File Transfer — Implementation Plan
 
-Status: **proposal, awaiting approval.** Nothing in this document is implemented yet.
+Status: **Phases 0–6 implemented**, plus two Phase 7 items (password-gated
+links, sender-visible download log) — see §13 for what remains. This document
+now doubles as a record of what was built, not just the original proposal;
+where the two diverge, the "done" annotations note the change.
 
 ## 1. What we are building
 
@@ -129,20 +132,20 @@ Why these choices:
 
 ## 6. Data model
 
-SQLite, WAL mode, `busy_timeout` set, foreign keys on. Ids are 128-bit random
-base64url — never sequential, so nothing is enumerable.
+PostgreSQL (via Docker Compose locally), foreign keys on. Ids are 128-bit
+random base64url — never sequential, so nothing is enumerable.
 
-| Table                 | Columns (abridged)                                                                                                                                                                                                                                                                                                                        | Notes                                                                                            |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `users`               | `id`, `email_lookup_hash` (unique), `email_encrypted`, `password_hash`, `email_verified_at`, `status`, `failed_login_count`, `locked_until`, `storage_used_bytes`, `totp_secret_encrypted`, `created_at`, `updated_at`                                                                                                                    | Lookup by HMAC of the normalized address; the address itself is AES-256-GCM                      |
-| `sessions`            | `id`, `user_id`, `secret_hash`, `created_at`, `last_seen_at`, `idle_expires_at`, `absolute_expires_at`, `revoked_at`, `ip_truncated`, `user_agent_hash`                                                                                                                                                                                   | Cookie value is `id.secret`; lookup by indexed id, then `timingSafeEqual` on the hash            |
-| `one_time_tokens`     | `id`, `user_id`, `purpose`, `token_hash`, `expires_at`, `consumed_at`                                                                                                                                                                                                                                                                     | One table for email verification, password reset, and recipient email codes                      |
-| `transfers`           | `id`, `owner_id`, `status`, `wrapped_file_key`, `wrap_nonce`, `wrap_scheme`, `kdf_params`, `encrypted_manifest`, `manifest_nonce`, `nonce_prefix`, `chunk_size_bytes`, `chunk_count`, `total_ciphertext_bytes`, `expires_at`, `max_downloads`, `download_count`, `gate`, `gate_verifier_hash`, `created_at`, `finalized_at`, `revoked_at` | `status`: `uploading` / `ready` / `revoked` / `expired`                                          |
-| `transfer_chunks`     | `transfer_id`, `chunk_index`, `ciphertext_bytes`, `sha256`, `stored_at`                                                                                                                                                                                                                                                                   | Primary key on the pair; finalize verifies the set is complete and sizes match what was declared |
-| `transfer_recipients` | `id`, `transfer_id`, `email_lookup_hash`, `email_encrypted`, `notified_at`                                                                                                                                                                                                                                                                | Only for the email-gated mode                                                                    |
-| `download_grants`     | `id`, `transfer_id`, `secret_hash`, `issued_at`, `expires_at`, `ip_truncated`                                                                                                                                                                                                                                                             | Policy is evaluated once at issue; chunk requests then just validate the grant                   |
-| `download_events`     | `id`, `transfer_id`, `grant_id`, `started_at`, `completed_at`, `bytes_served`, `ip_truncated`, `user_agent_hash`                                                                                                                                                                                                                          | What the sender sees as "downloaded twice"                                                       |
-| `audit_log`           | `id`, `occurred_at`, `event_type`, `actor_user_id`, `actor_ip_truncated`, `subject_type`, `subject_id`, `detail_json`                                                                                                                                                                                                                     | Append-only. Never a token, password, key, filename, or full IP                                  |
+| Table                 | Columns (abridged)                                                                                                                                                                                                                                                                         | Notes                                                                                                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users`               | `id`, `email_lookup_hash` (unique), `email_encrypted`, `password_hash`, `email_verified_at`, `status`, `failed_login_count`, `locked_until`, `storage_used_bytes`, `totp_secret_encrypted`, `created_at`, `updated_at`                                                                     | Lookup by HMAC of the normalized address; the address itself is AES-256-GCM                                                                                                        |
+| `sessions`            | `id`, `user_id`, `secret_hash`, `created_at`, `last_seen_at`, `idle_expires_at`, `absolute_expires_at`, `revoked_at`, `ip_truncated`, `user_agent_hash`                                                                                                                                    | Cookie value is `id.secret`; lookup by indexed id, then `timingSafeEqual` on the hash                                                                                              |
+| `one_time_tokens`     | `id`, `user_id`, `purpose`, `token_hash`, `expires_at`, `consumed_at`                                                                                                                                                                                                                      | One table for email verification, password reset, and recipient email codes                                                                                                        |
+| `transfers`           | `id`, `owner_id`, `status`, `gate`, `gate_verifier_hash`, `wrapped_file_key`, `wrap_nonce`, `encrypted_manifest`, `nonce_prefix`, `chunk_size_bytes`, `chunk_count`, `total_ciphertext_bytes`, `expires_at`, `max_downloads`, `download_count`, `created_at`, `finalized_at`, `revoked_at` | `status`: `uploading` / `ready` / `revoked` / `expired`. No separate `manifest_nonce` — it's always `noncePrefix ‖ 0xFFFFFFFF`, so storing it would just duplicate `nonce_prefix`. |
+| `transfer_chunks`     | `transfer_id`, `chunk_index`, `ciphertext_bytes`, `sha256`, `stored_at`                                                                                                                                                                                                                    | Primary key on the pair; finalize verifies the set is complete and sizes match what was declared                                                                                   |
+| `transfer_recipients` | `id`, `transfer_id`, `email_lookup_hash`, `email_encrypted`, `notified_at`                                                                                                                                                                                                                 | Only for the email-gated mode                                                                                                                                                      |
+| `download_grants`     | `id`, `transfer_id`, `secret_hash`, `issued_at`, `expires_at`, `ip_truncated`                                                                                                                                                                                                              | Policy is evaluated once at issue; chunk requests then just validate the grant                                                                                                     |
+| `download_events`     | `id`, `transfer_id`, `grant_id`, `started_at`, `completed_at`, `bytes_served`, `ip_truncated`, `user_agent_hash`                                                                                                                                                                           | What the sender sees as "downloaded twice"                                                                                                                                         |
+| `audit_log`           | `id`, `occurred_at`, `event_type`, `actor_user_id`, `actor_ip_truncated`, `subject_type`, `subject_id`, `detail_json`                                                                                                                                                                      | Append-only. Never a token, password, key, filename, or full IP                                                                                                                    |
 
 The download cap is enforced as a single guarded statement inside a transaction —
 `UPDATE transfers SET download_count = download_count + 1 WHERE id = ? AND
@@ -356,7 +359,7 @@ Every phase ends with `npm run check` and `npm run build` green from the repo
 root, and leaves the app runnable. Phases 1–6 are the product; phase 7 is
 independently shippable hardening.
 
-### Phase 0 — Groundwork
+### Phase 0 — [DONE] Groundwork
 
 Install the dependencies from section 11. Create the `shared/` workspace
 (`composite: true`, `exports` map, referenced from both tsconfigs). Extend the env
@@ -367,7 +370,7 @@ _Done when:_ an empty `shared` module imports cleanly in both workspaces,
 `npm run check` and `npm run build` pass, `npm test` runs zero tests
 successfully.
 
-### Phase 1 — Platform hardening and persistence
+### Phase 1 — [DONE] Platform hardening and persistence
 
 `security-headers.ts`, `request-context.ts` (pino replaces morgan),
 `rate-limit.ts`, `db/client.ts`, `db/schema.ts`, the first migration,
@@ -381,7 +384,7 @@ with a clear message when a prod secret is missing; field encryption round-trips
 under test and rejects a tampered ciphertext; the blob store round-trips and
 refuses a malformed id.
 
-### Phase 2 — Accounts and sessions
+### Phase 2 — [DONE] Accounts and sessions
 
 `password.ts`, `session.ts`, `one-time-tokens.ts`, `mailer.ts`,
 `require-session.ts`, `csrf.ts`, the six auth routes, `audit-log.ts`. Client:
@@ -394,7 +397,7 @@ exactly; a mutating request without the CSRF header or with a foreign `Origin` i
 rejected; the session id changes on login; a password reset invalidates existing
 sessions; the audit log records each auth event with no secret in it.
 
-### Phase 3 — Crypto core, no UI
+### Phase 3 — [DONE] Crypto core, no UI
 
 `shared/src/wire-format.ts` (labels, AAD builders, base64url), the zod contracts,
 and `shared/src/crypto/{keys,encrypt-file,decrypt-file}.ts` against
@@ -406,7 +409,7 @@ flipped tag, swapped chunks, duplicated chunk, dropped final chunk, wrong
 `transferId` in AAD, wrong link secret, wrong password; committed known-answer
 vectors detect any future format drift.
 
-### Phase 4 — Upload
+### Phase 4 — [DONE] Upload
 
 `routes/transfers.ts` create, `routes/upload.ts` chunk and finalize,
 `transfers/quota.ts`. Client: the crypto worker, `UploadScreen`, `useUpload` with
@@ -419,7 +422,7 @@ declared size is rejected; finalize fails on a missing chunk; the quota and size
 ceilings reject at declaration rather than after the bytes arrive; an abandoned
 upload is cleaned up; a chunk body over the limit is refused without buffering it.
 
-### Phase 5 — Download
+### Phase 5 — [DONE] Download
 
 `routes/download.ts` (public view, grant, chunk stream), `transfers/policy.ts`,
 `transfers/grants.ts`. Client: `DownloadScreen`, `useDownload`, `save-file.ts`
@@ -433,7 +436,7 @@ multi-gigabyte file succeeds in Chromium and in a browser without the File Syste
 Access API; the fragment appears in no request line, verified in DevTools and
 recorded in the docs.
 
-### Phase 6 — Management and lifecycle
+### Phase 6 — [DONE] Management and lifecycle
 
 Transfer list with per-transfer download events, revoke, delete,
 `jobs/janitor.ts` on an interval and at boot.
@@ -447,19 +450,24 @@ the quota.
 
 Each item stands alone; pick what you want.
 
-1. Password-gated links — the PBKDF2 KEK contribution plus the server-side verifier and its throttle.
+1. ~~Password-gated links~~ — **done.** The PBKDF2 KEK contribution, the independent server-side verifier (`derivePasswordVerifier`, Argon2id-hashed at rest), and its throttle via the existing grant rate limiter. See `docs/CRYPTO_PROTOCOL.md`.
 2. Email-gated recipients — allowlist, one-time codes, and responses that never confirm who is on the list.
 3. TOTP two-factor with hashed single-use recovery codes; the shared secret encrypted at rest.
 4. Breached-password check at signup via the k-anonymity range API, server-side, fail-open.
-5. A sender-visible access log per transfer.
+5. ~~A sender-visible access log per transfer~~ — **done.** `download_events` rows are written per grant issuance; `GET /transfers/:id/events` and the dashboard's expandable per-row history surface them.
 6. A `/security-review` pass over the whole diff, and `docs/THREAT_MODEL.md` finalized against what was actually built.
 7. Adding `npm audit --audit-level=high` to the existing CI workflow — I will not touch `.github/workflows/ci.yml` unless you ask.
 
 ## 14. Testing
 
-`node --test` with a per-suite temporary SQLite file and blob root, and
-`supertest` mounting `createApp()` without binding a port — which is exactly why
-`app.ts` is already split from `index.ts`.
+`node --test` (run through `tsx` so relative `.js`-suffixed imports resolve
+against TypeScript source — see the `shared` workspace note in the README) with
+a per-suite temporary blob root and, for DB-touching suites, a real local
+Postgres. `supertest` mounts `createApp()` without binding a port — which is
+exactly why `app.ts` is already split from `index.ts`. Only the DB-independent
+suites (crypto, CSRF, rate limiting, password hashing) exist so far; the
+auth/transfer route handlers are not yet covered by a test that talks to a
+live database.
 
 - **Crypto unit tests** run the browser code in Node, because the shared library only touches `globalThis.crypto`. This is the highest-value test surface in the project.
 - **Security regression tests** are named after the property they defend: enumeration parity, lockout, cookie flags, CSRF rejection, IDOR, download-cap race, grant expiry, path-traversal rejection, oversized body rejection, redaction of secrets from logs.

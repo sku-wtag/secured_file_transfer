@@ -6,7 +6,7 @@ import type { BlobStore } from './blob-store.js';
 
 function transferDir(root: string, transferId: string): string {
   if (!isValidGeneratedId(transferId)) {
-    throw new Error(`Invalid transfer id: ${transferId}`);
+    throw new Error('Invalid transfer id');
   }
   const resolved = path.resolve(root, transferId);
   if (path.dirname(resolved) !== path.resolve(root)) {

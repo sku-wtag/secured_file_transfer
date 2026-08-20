@@ -18,6 +18,6 @@ export function generateToken(byteLength = 32): string {
 
 const idPattern = /^[A-Za-z0-9_-]{10,64}$/;
 
-export function isValidGeneratedId(value: string): boolean {
-  return idPattern.test(value);
+export function isValidGeneratedId(value: unknown): value is string {
+  return typeof value === 'string' && idPattern.test(value);
 }

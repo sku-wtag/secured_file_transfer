@@ -11,9 +11,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     const controller = new AbortController();
     fetchSessionState(controller.signal)
       .then((next) => {
+        if (controller.signal.aborted) return;
         setState(next);
       })
       .catch(() => {
+        if (controller.signal.aborted) return;
         setState({ kind: 'signed-out' });
       });
     return () => {

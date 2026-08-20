@@ -26,13 +26,15 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
+function csrfHeaders(): Record<string, string> {
+  const csrfToken = readCsrfToken();
+  return csrfToken ? { [CSRF_HEADER_NAME]: csrfToken } : {};
+}
+
 function buildHeaders(method: string, hasBody: boolean): Record<string, string> {
   const headers: Record<string, string> = {};
   if (hasBody) headers['Content-Type'] = 'application/json';
-  if (method !== 'GET') {
-    const csrfToken = readCsrfToken();
-    if (csrfToken) headers[CSRF_HEADER_NAME] = csrfToken;
-  }
+  if (method !== 'GET') Object.assign(headers, csrfHeaders());
   return headers;
 }
 
@@ -61,4 +63,42 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   return payload as T;
+}
+
+export async function uploadChunkBytes(
+  path: string,
+  bytes: Uint8Array,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch(`/api${path}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/octet-stream', ...csrfHeaders() },
+    credentials: 'same-origin',
+    body: bytes as BodyInit,
+    ...(signal ? { signal } : {}),
+  });
+
+  if (response.status === 204) return;
+
+  const payload: unknown = await response.json();
+  throw new ApiError(response.status, extractErrorMessage(payload, response.status));
+}
+
+export async function fetchChunkBytes(
+  path: string,
+  grantToken: string,
+  signal?: AbortSignal,
+): Promise<Uint8Array> {
+  const response = await fetch(`/api${path}`, {
+    headers: { 'X-Download-Grant': grantToken },
+    credentials: 'same-origin',
+    ...(signal ? { signal } : {}),
+  });
+
+  if (!response.ok) {
+    const payload: unknown = await response.json();
+    throw new ApiError(response.status, extractErrorMessage(payload, response.status));
+  }
+
+  return new Uint8Array(await response.arrayBuffer());
 }

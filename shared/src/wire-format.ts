@@ -68,7 +68,12 @@ export function chunkAad(transferId: string, chunkIndex: number, chunkCount: num
 }
 
 export function manifestAad(transferId: string, chunkCount: number): Uint8Array {
-  return concatBytes(utf8Bytes('SFT1|manifest|'), utf8Bytes(transferId), utf8Bytes('|'), u32be(chunkCount));
+  return concatBytes(
+    utf8Bytes('SFT1|manifest|'),
+    utf8Bytes(transferId),
+    utf8Bytes('|'),
+    u32be(chunkCount),
+  );
 }
 
 export function wrapAad(transferId: string): Uint8Array {
@@ -77,4 +82,10 @@ export function wrapAad(transferId: string): Uint8Array {
 
 export function expectedChunkCount(size: number, chunkSize: number): number {
   return Math.ceil(size / chunkSize);
+}
+
+export interface ChunkContext {
+  noncePrefix: Uint8Array;
+  transferId: string;
+  chunkCount: number;
 }

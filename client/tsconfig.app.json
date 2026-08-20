@@ -24,5 +24,6 @@
     "exactOptionalPropertyTypes": true,
     "erasableSyntaxOnly": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "exclude": ["src/crypto/worker.ts"]
 }
