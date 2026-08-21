@@ -19,7 +19,7 @@ import { buildShareLink } from './link-builder.ts';
 export interface UploadOptions {
   expiresInHours?: number;
   maxDownloads?: number;
-  password?: string;
+  password: string;
 }
 
 async function readChunk(file: File, index: number, chunkSize: number): Promise<Uint8Array> {
@@ -50,7 +50,7 @@ async function finalizeUpload(
   file: File,
   worker: Worker,
   ctx: { fek: Uint8Array; noncePrefix: Uint8Array; transferId: string; chunkCount: number },
-  access: { linkSecret: Uint8Array; password?: string },
+  access: { linkSecret: Uint8Array; password: string },
 ): Promise<string> {
   const { linkSecret, password } = access;
   const manifest: FileManifest = {
@@ -69,9 +69,7 @@ async function finalizeUpload(
 
   const kek = await deriveKek(linkSecret, ctx.transferId, password);
   const { wrapNonce, wrappedKey } = await wrapFileKey(ctx.fek, kek, ctx.transferId);
-  const passwordVerifier = password
-    ? await derivePasswordVerifier(password, ctx.transferId)
-    : undefined;
+  const passwordVerifier = await derivePasswordVerifier(password, ctx.transferId);
 
   await apiRequest(`/transfers/${ctx.transferId}/finalize`, {
     method: 'POST',
@@ -80,8 +78,7 @@ async function finalizeUpload(
       wrapNonce: base64UrlEncode(wrapNonce),
       encryptedManifest: base64UrlEncode(encryptedManifest),
       noncePrefix: base64UrlEncode(ctx.noncePrefix),
-      gate: password ? 'link_password' : 'link',
-      passwordVerifier: passwordVerifier ? base64UrlEncode(passwordVerifier) : undefined,
+      passwordVerifier: base64UrlEncode(passwordVerifier),
     },
   });
 
@@ -115,8 +112,5 @@ export async function runUpload(
   await uploadChunks(file, worker, ctx, (done) => {
     onProgress(done, chunkCount);
   });
-  return finalizeUpload(file, worker, ctx, {
-    linkSecret,
-    ...(options.password !== undefined ? { password: options.password } : {}),
-  });
+  return finalizeUpload(file, worker, ctx, { linkSecret, password: options.password });
 }

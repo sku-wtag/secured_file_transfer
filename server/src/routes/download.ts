@@ -19,14 +19,10 @@ function requireAccessible(access: TransferAccessResult) {
   return access.transfer;
 }
 
-const grantBody = z.object({ passwordVerifier: z.string().min(1).optional() });
+const grantBody = z.object({ passwordVerifier: z.string().min(1) });
 
-async function requireGatePasses(
-  transfer: Transfer,
-  passwordVerifier: string | undefined,
-): Promise<void> {
-  if (transfer.gate !== 'link_password') return;
-  if (!passwordVerifier || !transfer.gateVerifierHash) {
+async function requireGatePasses(transfer: Transfer, passwordVerifier: string): Promise<void> {
+  if (!transfer.gateVerifierHash) {
     throw new HttpError(401, 'Incorrect password');
   }
   if (!(await verifyPassword(transfer.gateVerifierHash, passwordVerifier))) {

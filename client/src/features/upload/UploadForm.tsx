@@ -1,5 +1,7 @@
 import type { ChangeEvent } from 'react';
 
+export const MIN_TRANSFER_PASSWORD_LENGTH = 6;
+
 export function UploadForm({
   disabled,
   password,
@@ -24,12 +26,14 @@ export function UploadForm({
         aria-label="Choose a file to upload"
       />
 
-      <label htmlFor="upload-password">Password to open the link (optional)</label>
+      <label htmlFor="upload-password">Password to open the link</label>
       <input
         id="upload-password"
         type="password"
         value={password}
         disabled={disabled}
+        required
+        minLength={MIN_TRANSFER_PASSWORD_LENGTH}
         onChange={(event) => {
           onPasswordChange(event.target.value);
         }}

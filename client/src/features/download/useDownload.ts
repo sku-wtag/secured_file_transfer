@@ -15,7 +15,7 @@ export function useDownload(transferId: string, linkSecretParam: string | null) 
   const [state, setState] = useState<DownloadState>({ kind: 'idle' });
 
   const startDownload = useCallback(
-    async (password?: string) => {
+    async (password: string) => {
       if (!linkSecretParam) {
         setState({ kind: 'error', message: 'This link is missing its decryption key.' });
         return;

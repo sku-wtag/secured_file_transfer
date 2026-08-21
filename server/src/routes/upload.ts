@@ -38,8 +38,7 @@ const finalizeBody = z.object({
   wrapNonce: z.string().min(1),
   encryptedManifest: z.string().min(1),
   noncePrefix: z.string().min(1),
-  gate: z.enum(['link', 'link_password']).default('link'),
-  passwordVerifier: z.string().min(1).optional(),
+  passwordVerifier: z.string().min(1),
 });
 
 export const uploadRouter = Router();
@@ -90,19 +89,22 @@ uploadRouter.post('/:id/finalize', requireSession, requireVerifiedAccount, async
 
   const parsed = finalizeBody.safeParse(req.body);
   if (!parsed.success) throw new HttpError(400, 'Invalid request body');
-  if (parsed.data.gate === 'link_password' && !parsed.data.passwordVerifier) {
-    throw new HttpError(400, 'passwordVerifier is required when gate is link_password');
-  }
 
   const transfer = await loadUploadingTransfer(req.params.id, userId);
   await assertAllChunksUploaded(transfer.id, transfer.chunkCount);
 
   const { passwordVerifier, ...rest } = parsed.data;
-  const gateVerifierHash = passwordVerifier ? await hashPassword(passwordVerifier) : null;
+  const gateVerifierHash = await hashPassword(passwordVerifier);
 
   await db
     .update(transfers)
-    .set({ ...rest, gateVerifierHash, status: 'ready', finalizedAt: new Date() })
+    .set({
+      ...rest,
+      gate: 'link_password',
+      gateVerifierHash,
+      status: 'ready',
+      finalizedAt: new Date(),
+    })
     .where(eq(transfers.id, transfer.id));
 
   res.status(200).json({ transferId: transfer.id });

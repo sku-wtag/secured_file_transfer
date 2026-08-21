@@ -31,14 +31,12 @@ export async function openDownload(
   transferId: string,
   linkSecret: Uint8Array,
   worker: Worker,
-  password?: string,
+  password: string,
 ): Promise<OpenedDownload> {
-  const passwordVerifier = password
-    ? await derivePasswordVerifier(password, transferId)
-    : undefined;
+  const passwordVerifier = await derivePasswordVerifier(password, transferId);
   const grant = await apiRequest<GrantResponse>(`/download/${transferId}/grant`, {
     method: 'POST',
-    body: { passwordVerifier: passwordVerifier ? base64UrlEncode(passwordVerifier) : undefined },
+    body: { passwordVerifier: base64UrlEncode(passwordVerifier) },
   });
   const noncePrefix = base64UrlDecode(grant.noncePrefix);
   const ctx: ChunkContext = { noncePrefix, transferId, chunkCount: grant.chunkCount };

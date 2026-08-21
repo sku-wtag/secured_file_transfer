@@ -52,13 +52,9 @@ async function derivePasswordBits(password: string, transferId: string): Promise
 export async function deriveKek(
   linkSecret: Uint8Array,
   transferId: string,
-  password?: string,
+  password: string,
 ): Promise<Uint8Array> {
   const salt = utf8Bytes(transferId);
-  if (password === undefined) {
-    return hkdfSha256(linkSecret, salt, HKDF_INFO_KEK, KEY_BYTES);
-  }
-
   const passwordBits = await derivePasswordBits(password, transferId);
   const ikm = new Uint8Array([...linkSecret, ...passwordBits]);
   return hkdfSha256(ikm, salt, HKDF_INFO_KEK, KEY_BYTES);

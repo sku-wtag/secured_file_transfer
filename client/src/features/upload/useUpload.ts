@@ -17,7 +17,7 @@ export function useUpload() {
   const [state, setState] = useState<UploadState>({ kind: 'idle' });
   const workerRef = useRef<Worker | null>(null);
 
-  const upload = useCallback(async (file: File, options: UploadOptions = {}) => {
+  const upload = useCallback(async (file: File, options: UploadOptions) => {
     workerRef.current?.terminate();
     const worker = createWorker();
     workerRef.current = worker;

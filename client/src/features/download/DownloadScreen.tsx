@@ -7,16 +7,16 @@ import { useDownload } from './useDownload.ts';
 
 type Availability =
   | { kind: 'checking' }
-  | { kind: 'available'; gate: 'link' | 'link_password' }
+  | { kind: 'available' }
   | { kind: 'unavailable'; message: string };
 
 function useAvailability(transferId: string): Availability {
   const [availability, setAvailability] = useState<Availability>({ kind: 'checking' });
 
   useEffect(() => {
-    apiRequest<{ gate: 'link' | 'link_password' }>(`/download/${transferId}`)
-      .then((view) => {
-        setAvailability({ kind: 'available', gate: view.gate });
+    apiRequest(`/download/${transferId}`)
+      .then(() => {
+        setAvailability({ kind: 'available' });
       })
       .catch((error: unknown) => {
         setAvailability({
@@ -38,7 +38,6 @@ export default function DownloadScreen() {
   const [password, setPassword] = useState('');
 
   if (!transferId) return null;
-  const needsPassword = availability.kind === 'available' && availability.gate === 'link_password';
 
   return (
     <main className="dashboard">
@@ -54,23 +53,20 @@ export default function DownloadScreen() {
 
       {availability.kind === 'available' && state.kind === 'idle' && (
         <>
-          {needsPassword && (
-            <>
-              <label htmlFor="download-password">This file is password-protected</label>
-              <input
-                id="download-password"
-                type="password"
-                value={password}
-                onChange={(event) => {
-                  setPassword(event.target.value);
-                }}
-              />
-            </>
-          )}
+          <label htmlFor="download-password">Password to open the link</label>
+          <input
+            id="download-password"
+            type="password"
+            value={password}
+            onChange={(event) => {
+              setPassword(event.target.value);
+            }}
+          />
           <button
             type="button"
+            disabled={password.length === 0}
             onClick={() => {
-              void startDownload(password || undefined);
+              void startDownload(password);
             }}
           >
             Download

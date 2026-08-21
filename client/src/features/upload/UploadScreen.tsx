@@ -1,7 +1,7 @@
 import type { ChangeEvent } from 'react';
 import { useState } from 'react';
 
-import { UploadForm } from './UploadForm.tsx';
+import { MIN_TRANSFER_PASSWORD_LENGTH, UploadForm } from './UploadForm.tsx';
 import { UploadResult } from './UploadResult.tsx';
 import { useUpload } from './useUpload.ts';
 
@@ -18,7 +18,7 @@ export default function UploadScreen() {
 
   function handleUpload(): void {
     if (!file) return;
-    void upload(file, password ? { password } : {});
+    void upload(file, { password });
   }
 
   async function handleCopy(shareLink: string): Promise<void> {
@@ -37,7 +37,7 @@ export default function UploadScreen() {
         onFileChange={handleFileChange}
         onPasswordChange={setPassword}
         onUpload={handleUpload}
-        canUpload={file !== null}
+        canUpload={file !== null && password.length >= MIN_TRANSFER_PASSWORD_LENGTH}
       />
 
       {state.kind === 'uploading' && (
