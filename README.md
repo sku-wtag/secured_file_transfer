@@ -71,20 +71,20 @@ and `npm run build` both build `shared` first; if you change something in
 
 Run from the repo root.
 
-| Script                                   | What it does                                         |
-| ---------------------------------------- | ---------------------------------------------------- |
-| `npm run dev`                            | Build `shared`, then both dev servers with HMR       |
-| `npm run build`                          | Build `shared`, then type-check and build the rest   |
-| `npm start`                              | Run the built server                                 |
-| `npm test`                               | `node --test` over the server and shared suites      |
-| `npm run lint`                           | ESLint across the repo; warnings fail the run        |
-| `npm run lint:fix`                       | ESLint with autofix                                  |
-| `npm run format`                         | Prettier write                                       |
-| `npm run format:check`                   | Prettier check                                       |
-| `npm run typecheck`                      | `tsc --noEmit` in every workspace                    |
-| `npm run check`                          | format:check + lint + typecheck, in one go           |
-| `npm run db:generate --workspace server` | Generate a migration from `db/schema` changes        |
-| `npm run db:migrate --workspace server`  | Apply pending migrations without starting the server |
+| Script                                   | What it does                                                 |
+| ---------------------------------------- | ------------------------------------------------------------ |
+| `npm run dev`                            | Build `shared`, then both dev servers with HMR               |
+| `npm run build`                          | Build `shared`, then type-check and build the rest           |
+| `npm start`                              | Run the built server                                         |
+| `npm test`                               | `node --test` over server and shared, then Vitest for client |
+| `npm run lint`                           | ESLint across the repo; warnings fail the run                |
+| `npm run lint:fix`                       | ESLint with autofix                                          |
+| `npm run format`                         | Prettier write                                               |
+| `npm run format:check`                   | Prettier check                                               |
+| `npm run typecheck`                      | `tsc --noEmit` in every workspace                            |
+| `npm run check`                          | format:check + lint + typecheck, in one go                   |
+| `npm run db:generate --workspace server` | Generate a migration from `db/schema` changes                |
+| `npm run db:migrate --workspace server`  | Apply pending migrations without starting the server         |
 
 Target a single workspace with `--workspace`, e.g. `npm run build --workspace client`.
 

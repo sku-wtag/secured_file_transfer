@@ -1,45 +1,50 @@
-import { useCallback, useEffect, useState } from 'react';
+import type { UseQueryResult } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { apiRequest } from '../../api/client.ts';
 import type { TransferSummary } from './types.ts';
+
+const transfersQueryKey = ['transfers'] as const;
+
+async function fetchTransfers(): Promise<TransferSummary[]> {
+  const response = await apiRequest<{ transfers: TransferSummary[] }>('/transfers');
+  return response.transfers;
+}
 
 export type TransfersState =
   | { kind: 'loading' }
   | { kind: 'ready'; transfers: TransferSummary[] }
   | { kind: 'error'; message: string };
 
-export function useTransfers() {
-  const [state, setState] = useState<TransfersState>({ kind: 'loading' });
-
-  const refresh = useCallback(async () => {
-    try {
-      const response = await apiRequest<{ transfers: TransferSummary[] }>('/transfers');
-      setState({ kind: 'ready', transfers: response.transfers });
-    } catch (error) {
-      setState({
+function deriveState(query: UseQueryResult<TransferSummary[]>): TransfersState {
+  switch (query.status) {
+    case 'pending':
+      return { kind: 'loading' };
+    case 'error':
+      return {
         kind: 'error',
-        message: error instanceof Error ? error.message : 'Could not load transfers',
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    apiRequest<{ transfers: TransferSummary[] }>('/transfers')
-      .then((response) => {
-        setState({ kind: 'ready', transfers: response.transfers });
-      })
-      .catch((error: unknown) => {
-        setState({
-          kind: 'error',
-          message: error instanceof Error ? error.message : 'Could not load transfers',
-        });
-      });
-  }, []);
-
-  async function revoke(transferId: string): Promise<void> {
-    await apiRequest(`/transfers/${transferId}`, { method: 'DELETE' });
-    await refresh();
+        message: query.error instanceof Error ? query.error.message : 'Could not load transfers',
+      };
+    case 'success':
+      return { kind: 'ready', transfers: query.data };
   }
+}
 
-  return { state, revoke };
+export function useTransfers(): { state: TransfersState; revoke: (transferId: string) => void } {
+  const queryClient = useQueryClient();
+  const query = useQuery({ queryKey: transfersQueryKey, queryFn: fetchTransfers });
+  const revokeMutation = useMutation({
+    mutationFn: (transferId: string) =>
+      apiRequest(`/transfers/${transferId}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: transfersQueryKey });
+    },
+  });
+
+  return {
+    state: deriveState(query),
+    revoke: (transferId: string) => {
+      revokeMutation.mutate(transferId);
+    },
+  };
 }

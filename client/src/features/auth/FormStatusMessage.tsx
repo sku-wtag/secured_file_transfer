@@ -1,19 +1,8 @@
+import { Banner } from '../../components/Banner.tsx';
 import type { FormStatus } from './form-status.ts';
 
 export function FormStatusMessage({ status }: { status: FormStatus }) {
-  if (status.kind === 'done') {
-    return (
-      <p role="status" className="ok">
-        {status.message}
-      </p>
-    );
-  }
-  if (status.kind === 'error') {
-    return (
-      <p role="alert" className="fail">
-        {status.message}
-      </p>
-    );
-  }
+  if (status.kind === 'done') return <Banner kind="ok">{status.message}</Banner>;
+  if (status.kind === 'error') return <Banner kind="error">{status.message}</Banner>;
   return null;
 }

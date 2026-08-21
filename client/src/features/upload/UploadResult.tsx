@@ -1,3 +1,7 @@
+import { Banner } from '../../components/Banner.tsx';
+import { Button } from '../../components/Button.tsx';
+import { TextField } from '../../components/TextField.tsx';
+
 export function UploadResult({
   shareLink,
   copied,
@@ -8,12 +12,20 @@ export function UploadResult({
   onCopy: () => void;
 }) {
   return (
-    <div role="status">
-      <p className="ok">Upload complete.</p>
-      <input type="text" readOnly value={shareLink} aria-label="Share link" />
-      <button type="button" onClick={onCopy}>
-        {copied ? 'Copied' : 'Copy link'}
-      </button>
+    <div className="flex flex-col gap-4">
+      <Banner kind="ok">Upload complete.</Banner>
+      <div className="flex items-end gap-2">
+        <TextField
+          id="share-link"
+          label="Share link"
+          readOnly
+          value={shareLink}
+          containerClassName="flex-1"
+        />
+        <Button type="button" variant="secondary" onClick={onCopy}>
+          {copied ? 'Copied' : 'Copy link'}
+        </Button>
+      </div>
     </div>
   );
 }

@@ -2,8 +2,12 @@ import type { SubmitEvent } from 'react';
 import { useState } from 'react';
 
 import { apiRequest } from '../../api/client.ts';
+import { AuthCard } from '../../components/AuthCard.tsx';
+import { Button } from '../../components/Button.tsx';
+import { TextField } from '../../components/TextField.tsx';
 import type { FormStatus } from './form-status.ts';
 import { messageFor } from './form-status.ts';
+import { FormStatusMessage } from './FormStatusMessage.tsx';
 
 export default function ResetPasswordRequestScreen() {
   const [email, setEmail] = useState('');
@@ -24,17 +28,18 @@ export default function ResetPasswordRequestScreen() {
   }
 
   return (
-    <main className="auth-screen">
-      <h1>Reset your password</h1>
+    <AuthCard title="Reset your password">
       <form
+        className="flex flex-col gap-4"
         onSubmit={(event) => {
           void handleSubmit(event);
         }}
       >
-        <label htmlFor="reset-email">Email</label>
-        <input
+        <TextField
           id="reset-email"
+          label="Email"
           type="email"
+          autoComplete="email"
           required
           value={email}
           onChange={(event) => {
@@ -42,21 +47,12 @@ export default function ResetPasswordRequestScreen() {
           }}
         />
 
-        <button type="submit" disabled={status.kind === 'submitting'}>
-          Send reset link
-        </button>
+        <Button type="submit" disabled={status.kind === 'submitting'}>
+          {status.kind === 'submitting' ? 'Sending…' : 'Send reset link'}
+        </Button>
       </form>
 
-      {status.kind === 'done' && (
-        <p role="status" className="ok">
-          {status.message}
-        </p>
-      )}
-      {status.kind === 'error' && (
-        <p role="alert" className="fail">
-          {status.message}
-        </p>
-      )}
-    </main>
+      <FormStatusMessage status={status} />
+    </AuthCard>
   );
 }

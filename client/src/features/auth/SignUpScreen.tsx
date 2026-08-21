@@ -2,6 +2,9 @@ import type { SubmitEvent } from 'react';
 import { useState } from 'react';
 
 import { apiRequest } from '../../api/client.ts';
+import { AuthCard } from '../../components/AuthCard.tsx';
+import { Button } from '../../components/Button.tsx';
+import { TextField } from '../../components/TextField.tsx';
 import type { FormStatus } from './form-status.ts';
 import { messageFor } from './form-status.ts';
 import { FormStatusMessage } from './FormStatusMessage.tsx';
@@ -26,17 +29,18 @@ export default function SignUpScreen() {
   }
 
   return (
-    <main className="auth-screen">
-      <h1>Create an account</h1>
+    <AuthCard title="Create an account">
       <form
+        className="flex flex-col gap-4"
         onSubmit={(event) => {
           void handleSubmit(event);
         }}
       >
-        <label htmlFor="signup-email">Email</label>
-        <input
+        <TextField
           id="signup-email"
+          label="Email"
           type="email"
+          autoComplete="email"
           required
           value={email}
           onChange={(event) => {
@@ -44,10 +48,11 @@ export default function SignUpScreen() {
           }}
         />
 
-        <label htmlFor="signup-password">Password</label>
-        <input
+        <TextField
           id="signup-password"
+          label="Password"
           type="password"
+          autoComplete="new-password"
           required
           minLength={12}
           value={password}
@@ -56,12 +61,12 @@ export default function SignUpScreen() {
           }}
         />
 
-        <button type="submit" disabled={status.kind === 'submitting'}>
-          Sign up
-        </button>
+        <Button type="submit" disabled={status.kind === 'submitting'}>
+          {status.kind === 'submitting' ? 'Creating account…' : 'Sign up'}
+        </Button>
       </form>
 
       <FormStatusMessage status={status} />
-    </main>
+    </AuthCard>
   );
 }

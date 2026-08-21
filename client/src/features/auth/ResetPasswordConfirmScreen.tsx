@@ -1,17 +1,21 @@
+import { getRouteApi, Link } from '@tanstack/react-router';
 import type { SubmitEvent } from 'react';
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
 
 import { apiRequest } from '../../api/client.ts';
+import { AuthCard } from '../../components/AuthCard.tsx';
+import { Banner } from '../../components/Banner.tsx';
+import { Button } from '../../components/Button.tsx';
+import { TextField } from '../../components/TextField.tsx';
 import type { FormStatus } from './form-status.ts';
 import { messageFor } from './form-status.ts';
 
+const routeApi = getRouteApi('/reset-password/confirm');
+
 export default function ResetPasswordConfirmScreen() {
-  const [searchParams] = useSearchParams();
+  const { uid: userId, token } = routeApi.useSearch();
   const [newPassword, setNewPassword] = useState('');
   const [status, setStatus] = useState<FormStatus>({ kind: 'idle' });
-  const userId = searchParams.get('uid');
-  const token = searchParams.get('token');
 
   async function handleSubmit(event: SubmitEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
@@ -33,17 +37,18 @@ export default function ResetPasswordConfirmScreen() {
   }
 
   return (
-    <main className="auth-screen">
-      <h1>Choose a new password</h1>
+    <AuthCard title="Choose a new password">
       <form
+        className="flex flex-col gap-4"
         onSubmit={(event) => {
           void handleSubmit(event);
         }}
       >
-        <label htmlFor="new-password">New password</label>
-        <input
+        <TextField
           id="new-password"
+          label="New password"
           type="password"
+          autoComplete="new-password"
           required
           minLength={12}
           value={newPassword}
@@ -52,21 +57,20 @@ export default function ResetPasswordConfirmScreen() {
           }}
         />
 
-        <button type="submit" disabled={status.kind === 'submitting'}>
-          Update password
-        </button>
+        <Button type="submit" disabled={status.kind === 'submitting'}>
+          {status.kind === 'submitting' ? 'Updating…' : 'Update password'}
+        </Button>
       </form>
 
       {status.kind === 'done' && (
-        <p role="status" className="ok">
-          {status.message} <Link to="/sign-in">Sign in</Link>
-        </p>
+        <Banner kind="ok">
+          {status.message}{' '}
+          <Link to="/sign-in" className="font-medium underline">
+            Sign in
+          </Link>
+        </Banner>
       )}
-      {status.kind === 'error' && (
-        <p role="alert" className="fail">
-          {status.message}
-        </p>
-      )}
-    </main>
+      {status.kind === 'error' && <Banner kind="error">{status.message}</Banner>}
+    </AuthCard>
   );
 }

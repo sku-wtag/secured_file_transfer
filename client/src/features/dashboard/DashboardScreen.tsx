@@ -1,48 +1,32 @@
-import { Link, useNavigate } from 'react-router';
+import { Link } from '@tanstack/react-router';
 
-import { apiRequest } from '../../api/client.ts';
-import { useSession } from '../../api/use-session.ts';
+import { AppHeader } from '../../components/AppHeader.tsx';
 import { TransferList } from '../transfers/TransferList.tsx';
 import { useTransfers } from '../transfers/useTransfers.ts';
 
 export default function DashboardScreen() {
-  const { state, refresh } = useSession();
-  const navigate = useNavigate();
   const { state: transfersState, revoke } = useTransfers();
 
-  if (state.kind !== 'signed-in') return null;
-
-  async function handleLogout(): Promise<void> {
-    await apiRequest('/auth/logout', { method: 'POST' });
-    await refresh();
-    void navigate('/sign-in');
-  }
-
   function handleRevoke(transferId: string): void {
-    void revoke(transferId);
+    revoke(transferId);
   }
 
   return (
-    <main className="dashboard">
-      <h1>Secure File Transfer</h1>
-      <p>
-        Signed in as <strong>{state.user.email}</strong>.
-      </p>
-      <p>
-        <Link to="/app/upload">Upload a file</Link>
-      </p>
+    <>
+      <AppHeader />
+      <main className="mx-auto max-w-3xl px-4 py-10">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-white">Your transfers</h1>
+          <Link
+            to="/app/upload"
+            className="inline-flex items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500"
+          >
+            Upload a file
+          </Link>
+        </div>
 
-      <h2>Your transfers</h2>
-      <TransferList state={transfersState} onRevoke={handleRevoke} />
-
-      <button
-        type="button"
-        onClick={() => {
-          void handleLogout();
-        }}
-      >
-        Sign out
-      </button>
-    </main>
+        <TransferList state={transfersState} onRevoke={handleRevoke} />
+      </main>
+    </>
   );
 }

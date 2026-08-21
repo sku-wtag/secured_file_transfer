@@ -1,11 +1,14 @@
+import { Link, useNavigate } from '@tanstack/react-router';
 import type { SubmitEvent } from 'react';
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
 
 import { apiRequest } from '../../api/client.ts';
 import { useSession } from '../../api/use-session.ts';
+import { AuthCard } from '../../components/AuthCard.tsx';
+import { Banner } from '../../components/Banner.tsx';
 import type { FormStatus } from './form-status.ts';
 import { messageFor } from './form-status.ts';
+import { SignInForm } from './SignInForm.tsx';
 
 export default function SignInScreen() {
   const [email, setEmail] = useState('');
@@ -20,56 +23,44 @@ export default function SignInScreen() {
     try {
       await apiRequest('/auth/login', { method: 'POST', body: { email, password } });
       await refresh();
-      void navigate('/app');
+      void navigate({ to: '/app' });
     } catch (error) {
       setStatus({ kind: 'error', message: messageFor(error) });
     }
   }
 
   return (
-    <main className="auth-screen">
-      <h1>Sign in</h1>
-      <form
+    <AuthCard title="Sign in">
+      <SignInForm
+        email={email}
+        password={password}
+        submitting={status.kind === 'submitting'}
+        onEmailChange={setEmail}
+        onPasswordChange={setPassword}
         onSubmit={(event) => {
           void handleSubmit(event);
         }}
-      >
-        <label htmlFor="signin-email">Email</label>
-        <input
-          id="signin-email"
-          type="email"
-          required
-          value={email}
-          onChange={(event) => {
-            setEmail(event.target.value);
-          }}
-        />
+      />
 
-        <label htmlFor="signin-password">Password</label>
-        <input
-          id="signin-password"
-          type="password"
-          required
-          value={password}
-          onChange={(event) => {
-            setPassword(event.target.value);
-          }}
-        />
+      {status.kind === 'error' && <Banner kind="error">{status.message}</Banner>}
 
-        <button type="submit" disabled={status.kind === 'submitting'}>
-          Sign in
-        </button>
-      </form>
-
-      {status.kind === 'error' && (
-        <p role="alert" className="fail">
-          {status.message}
+      <div className="flex flex-col items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+        <Link
+          to="/reset-password"
+          className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+        >
+          Forgot your password?
+        </Link>
+        <p>
+          Don&rsquo;t have an account?{' '}
+          <Link
+            to="/sign-up"
+            className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400"
+          >
+            Sign up
+          </Link>
         </p>
-      )}
-
-      <p>
-        <Link to="/reset-password">Forgot your password?</Link>
-      </p>
-    </main>
+      </div>
+    </AuthCard>
   );
 }

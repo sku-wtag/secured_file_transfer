@@ -1,14 +1,18 @@
+import { getRouteApi, useLocation } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { useLocation, useParams } from 'react-router';
 
 import { apiRequest } from '../../api/client.ts';
+import { AuthCard } from '../../components/AuthCard.tsx';
+import { Banner } from '../../components/Banner.tsx';
+import { Button } from '../../components/Button.tsx';
+import { TextField } from '../../components/TextField.tsx';
 import { DownloadStatus } from './DownloadStatus.tsx';
 import { useDownload } from './useDownload.ts';
 
+const routeApi = getRouteApi('/d/$transferId');
+
 type Availability =
-  | { kind: 'checking' }
-  | { kind: 'available' }
-  | { kind: 'unavailable'; message: string };
+  { kind: 'checking' } | { kind: 'available' } | { kind: 'unavailable'; message: string };
 
 function useAvailability(transferId: string): Availability {
   const [availability, setAvailability] = useState<Availability>({ kind: 'checking' });
@@ -30,39 +34,37 @@ function useAvailability(transferId: string): Availability {
 }
 
 export default function DownloadScreen() {
-  const { transferId } = useParams<{ transferId: string }>();
+  const { transferId } = routeApi.useParams();
   const location = useLocation();
   const linkSecret = new URLSearchParams(location.hash.replace(/^#/, '')).get('k');
-  const availability = useAvailability(transferId ?? '');
-  const { state, startDownload } = useDownload(transferId ?? '', linkSecret);
+  const availability = useAvailability(transferId);
+  const { state, startDownload } = useDownload(transferId, linkSecret);
   const [password, setPassword] = useState('');
 
-  if (!transferId) return null;
-
   return (
-    <main className="dashboard">
-      <h1>Download this file</h1>
-      <p>It is decrypted entirely in your browser.</p>
+    <AuthCard title="Download this file">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
+        It is decrypted entirely in your browser.
+      </p>
 
-      {availability.kind === 'checking' && <p>Checking link&hellip;</p>}
-      {availability.kind === 'unavailable' && (
-        <p role="alert" className="fail">
-          {availability.message}
-        </p>
+      {availability.kind === 'checking' && (
+        <p className="text-sm text-slate-500 dark:text-slate-400">Checking link…</p>
       )}
+      {availability.kind === 'unavailable' && <Banner kind="error">{availability.message}</Banner>}
 
       {availability.kind === 'available' && state.kind === 'idle' && (
-        <>
-          <label htmlFor="download-password">Password to open the link</label>
-          <input
+        <div className="flex flex-col gap-4">
+          <TextField
             id="download-password"
+            label="Password to open the link"
             type="password"
+            required
             value={password}
             onChange={(event) => {
               setPassword(event.target.value);
             }}
           />
-          <button
+          <Button
             type="button"
             disabled={password.length === 0}
             onClick={() => {
@@ -70,11 +72,11 @@ export default function DownloadScreen() {
             }}
           >
             Download
-          </button>
-        </>
+          </Button>
+        </div>
       )}
 
       <DownloadStatus state={state} />
-    </main>
+    </AuthCard>
   );
 }

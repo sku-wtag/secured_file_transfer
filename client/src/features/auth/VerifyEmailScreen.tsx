@@ -1,15 +1,18 @@
+import { getRouteApi } from '@tanstack/react-router';
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
 
 import { apiRequest } from '../../api/client.ts';
+import { AuthCard } from '../../components/AuthCard.tsx';
+import { Banner } from '../../components/Banner.tsx';
 import type { FormStatus } from './form-status.ts';
 import { messageFor } from './form-status.ts';
+import { FormStatusMessage } from './FormStatusMessage.tsx';
+
+const routeApi = getRouteApi('/verify-email');
 
 export default function VerifyEmailScreen() {
-  const [searchParams] = useSearchParams();
+  const { uid: userId, token } = routeApi.useSearch();
   const [status, setStatus] = useState<FormStatus>({ kind: 'submitting' });
-  const userId = searchParams.get('uid');
-  const token = searchParams.get('token');
 
   useEffect(() => {
     if (!userId || !token) return;
@@ -27,29 +30,18 @@ export default function VerifyEmailScreen() {
 
   if (!userId || !token) {
     return (
-      <main className="auth-screen">
-        <h1>Verify your email</h1>
-        <p role="alert" className="fail">
-          This verification link is missing information.
-        </p>
-      </main>
+      <AuthCard title="Verify your email">
+        <Banner kind="error">This verification link is missing information.</Banner>
+      </AuthCard>
     );
   }
 
   return (
-    <main className="auth-screen">
-      <h1>Verify your email</h1>
-      {status.kind === 'submitting' && <p>Verifying&hellip;</p>}
-      {status.kind === 'done' && (
-        <p role="status" className="ok">
-          {status.message}
-        </p>
+    <AuthCard title="Verify your email">
+      {status.kind === 'submitting' && (
+        <p className="text-sm text-slate-500 dark:text-slate-400">Verifying…</p>
       )}
-      {status.kind === 'error' && (
-        <p role="alert" className="fail">
-          {status.message}
-        </p>
-      )}
-    </main>
+      <FormStatusMessage status={status} />
+    </AuthCard>
   );
 }
