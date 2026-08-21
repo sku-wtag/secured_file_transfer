@@ -26,7 +26,7 @@ import { HttpError } from '../middleware/error-handler.js';
 1. Create `routes/<resource>.ts` exporting a named router, with paths declared
    relative to the resource so the prefix lives in one place.
 2. Mount it: `apiRouter.use('/users', usersRouter)` — never repeat `/api`.
-3. Run `npm run check`. An unmounted router type-checks and lints clean while
+3. Run `yarn run check`. An unmounted router type-checks and lints clean while
    silently 404ing.
 
 ```ts
@@ -70,7 +70,7 @@ Add to the zod schema there, then `import { env } from '../config/env.js'`.
 Update **`.env.example` in the same change** — it is the committed documentation
 of what the app needs, and skipping it costs the next person an hour.
 
-- Default anything with a sane local value, so `npm run dev` needs no setup.
+- Default anything with a sane local value, so `yarn dev` needs no setup.
 - Leave secrets and infrastructure endpoints required, so a bad deploy fails at
   boot rather than at first use.
 - Everything in `process.env` is a string: use `z.coerce.number()` and
@@ -85,4 +85,4 @@ build time**, so they are public. Secrets stay on the server; if the client need
 data derived from one, add an endpoint. Declare them in `client/src/vite-env.d.ts`.
 
 A schema typo is caught at boot, not by tsc — start the server to prove it:
-`npm run dev:server`.
+`yarn dev:server`.

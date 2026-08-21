@@ -5,7 +5,7 @@ description: Conventions and coding standards for this React plus Express TypeSc
 
 # Project conventions
 
-npm workspaces monorepo: `client/` (Vite, React 19) and `server/` (Express 5,
+Yarn workspaces monorepo: `client/` (Vite, React 19) and `server/` (Express 5,
 Node ESM). Strict TypeScript, one root ESLint flat config, Prettier owns
 formatting. No database, auth, test runner, or client router yet — confirm with
 the user before adding one.
@@ -16,7 +16,7 @@ the user before adding one.
 | --- | --- |
 | API route, request validation, server error handling, env vars and config | `references/server.md` |
 | React component, screen, hook, data fetching, accessibility | `references/client.md` |
-| Running checks, diagnosing a lint or tsc error, installing a package | `references/tooling.md` |
+| Running checks, diagnosing a lint or tsc error, installing a package, Docker or Compose | `references/tooling.md` |
 | Naming, function shape, file size, refactoring judgement calls | `docs/CODING_STANDARDS.md` |
 
 Read only what the task needs.
@@ -52,7 +52,7 @@ compile. Reasoning that needs prose goes in the pull request description or
 
 ## Finishing
 
-Run `npm run check` and `npm run build` from the repo root. Both must pass —
+Run `yarn run check` and `yarn build` from the repo root. Both must pass —
 `lint` fails on warnings by design. Then reread the diff as a stranger: names
 self-evident, no comments, nothing sensitive logged, nothing in the
 diff the task did not need.

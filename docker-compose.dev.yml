@@ -1,0 +1,46 @@
+services:
+  server:
+    build:
+      target: build
+    command: yarn workspace server dev
+    environment:
+      NODE_ENV: development
+      CLIENT_ORIGIN: ${DEV_ORIGIN:-http://localhost:5173}
+      PUBLIC_BASE_URL: ${DEV_ORIGIN:-http://localhost:5173}
+      TRUSTED_PROXY_HOPS: 0
+      BLOB_ROOT: /app/server/var/blobs
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./shared:/app/shared
+      - ./server:/app/server
+      - root-node-modules:/app/node_modules
+      - shared-node-modules:/app/shared/node_modules
+      - server-node-modules:/app/server/node_modules
+
+  client:
+    build:
+      dockerfile: client/Dockerfile
+      target: build
+    command: yarn workspace client dev
+    environment:
+      API_PROXY_TARGET: http://server:3000
+    depends_on:
+      server:
+        condition: service_started
+    ports:
+      - '5173:5173'
+    volumes:
+      - ./shared:/app/shared
+      - ./client:/app/client
+      - client-root-node-modules:/app/node_modules
+      - client-shared-node-modules:/app/shared/node_modules
+      - client-workspace-node-modules:/app/client/node_modules
+
+volumes:
+  root-node-modules:
+  shared-node-modules:
+  server-node-modules:
+  client-root-node-modules:
+  client-shared-node-modules:
+  client-workspace-node-modules:

@@ -18,11 +18,10 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
-          cache: npm
+          cache: yarn
 
-      - run: npm ci
+      - run: yarn install --frozen-lockfile
 
-      # Formatting, lint (warnings fail), and types for both workspaces.
-      - run: npm run check
+      - run: yarn run check
 
-      - run: npm run build
+      - run: yarn build

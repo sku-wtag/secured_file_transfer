@@ -251,7 +251,7 @@ No runner is installed yet; when one is added:
 
 ## Before calling a change done
 
-- [ ] `npm run check` and `npm run build` pass.
+- [ ] `yarn run check` and `yarn build` pass.
 - [ ] Every name makes sense to someone seeing it for the first time.
 - [ ] No comments; names and types carry the whole explanation.
 - [ ] No invalid state is constructible — no correlated booleans.

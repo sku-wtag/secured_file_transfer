@@ -498,7 +498,8 @@ before then are ideal.
 
 ## 17. Out of scope
 
-Object storage adapters, general deploy/CI configuration (Docker here is scoped
-to running Postgres locally, not to packaging the app), virus scanning,
+Object storage adapters, orchestration beyond Docker Compose (the repository
+packages the app as images and runs the stack locally; Kubernetes, managed
+Postgres, and object storage are not covered), virus scanning,
 sender-to-recipient messaging, folder and multi-file archives, P2P or WebRTC
 transfer, admin console, billing, internationalization, mobile applications.

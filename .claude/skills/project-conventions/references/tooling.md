@@ -3,13 +3,15 @@
 ## The gate
 
 ```bash
-npm run check   # prettier --check, eslint --max-warnings 0, tsc --noEmit x2
-npm run build   # server emit, then client tsc + vite build
+yarn run check   # prettier --check, eslint --max-warnings 0, tsc --noEmit x2
+yarn build   # server emit, then client tsc + vite build
 ```
 
 Run both from the repo root; `check` alone does not prove the emit step works.
-Fix with `npm run format` and `npm run lint:fix` — the latter sorts imports, so
-never hand-sort. Scope while iterating: `npm run typecheck --workspace server`.
+`run` is not optional on the first one: `yarn check` is a Yarn 1 builtin that
+verifies `node_modules` against `package.json` and never reaches the script.
+Fix with `yarn format` and `yarn lint:fix` — the latter sorts imports, so
+never hand-sort. Scope while iterating: `yarn workspace server typecheck`.
 
 Warnings fail lint by design: a warning nobody must fix accumulates until the
 output is noise. Unused disable directives are themselves errors.
@@ -74,16 +76,16 @@ handlers; `react/prop-types` is off because TypeScript already checks props; and
 ## Dependencies
 
 Three `package.json` files: root (tooling you *run*), `client/`, `server/` (code
-you *import*). Installing into the wrong one works locally, because npm hoists to
+you *import*). Installing into the wrong one works locally, because Yarn hoists to
 one `node_modules`, then breaks when a workspace is built alone.
 
 ```bash
-npm install --workspace server <pkg>              # runtime
-npm install --workspace server --save-dev <pkg>   # dev-only
-npm install --save-dev --include-workspace-root=false <pkg>   # root tooling
+yarn workspace server add <pkg>        # runtime
+yarn workspace server add -D <pkg>     # dev-only
+yarn add -D -W <pkg>                   # root tooling
 ```
 
-Server code imported at runtime must resolve after `npm ci --omit=dev`, so it
+Server code imported at runtime must resolve after `yarn install --production`, so it
 belongs in `dependencies`. Client packages could technically be dev deps since
 Vite bundles them — keep them in `dependencies` anyway so "what does this app
 use" stays answerable from one field. `@types/*` are always dev.
@@ -99,7 +101,22 @@ because `eslint-plugin-react` and `eslint-plugin-jsx-a11y` declare peers only up
 to `^9`; the reason is recorded in `README.md`. Document
 any pin the same way — an undocumented pin becomes permanent by accident.
 
-Afterwards: commit `package-lock.json` with the `package.json` change, run
-`npm run check`, and grep for leftover imports after a removal. If npm warns an
-install script was skipped, check whether the package needs it before
-`npm approve-scripts <pkg>` — approving runs arbitrary package code.
+Afterwards: commit `yarn.lock` with the `package.json` change, run `yarn run check`,
+and grep for leftover imports after a removal. Yarn 1 runs every install script
+without asking, so the `allowScripts` block in the root `package.json` is inert
+npm-era config; read a new dependency's postinstall before adding it.
+
+## Docker
+
+Both images build from the repository root, install with
+`yarn install --frozen-lockfile`, and build `shared` before anything that imports
+it. A dependency added to a workspace needs no Dockerfile change; a new
+top-level file that the build reads does — the stages copy manifests and sources
+explicitly to keep the dependency layer cacheable.
+
+`client/nginx.conf` serves the SPA in production, so it — not helmet — sets the
+security headers on the HTML document. Its CSP directives duplicate
+`productionCsp` in `server/src/middleware/security-headers.ts` by necessity;
+change one and you must change the other. Its `client_max_body_size` covers
+`MAX_CHUNK_BYTES` plus the GCM tag, so raising the chunk size means raising it
+too.
