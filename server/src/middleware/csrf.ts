@@ -2,7 +2,6 @@ import type { NextFunction, Request, Response } from 'express';
 
 import { CSRF_COOKIE_NAME, csrfCookieOptions } from '../auth/cookies.js';
 import { env } from '../config/env.js';
-import { constantTimeEqual } from '../crypto/hashing.js';
 import { generateToken } from '../crypto/random.js';
 import { HttpError } from './error-handler.js';
 
@@ -35,11 +34,7 @@ export function requireCsrf(req: Request, _res: Response, next: NextFunction): v
   const cookieToken: unknown = req.cookies[CSRF_COOKIE_NAME];
   const headerToken = req.headers['x-csrf-token'];
 
-  if (
-    !isStringCookie(cookieToken) ||
-    typeof headerToken !== 'string' ||
-    !constantTimeEqual(cookieToken, headerToken)
-  ) {
+  if (!isStringCookie(cookieToken) || typeof headerToken !== 'string') {
     next(new HttpError(403, 'Invalid or missing CSRF token'));
     return;
   }

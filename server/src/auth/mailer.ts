@@ -46,6 +46,7 @@ async function sendViaDevStream(mail: Mail): Promise<void> {
 }
 
 export async function sendMail(mail: Mail): Promise<void> {
+  console.log('Sagor', env.SMTP_URL);
   if (env.SMTP_URL) {
     await sendViaSmtp(env.SMTP_URL, mail);
   } else {
