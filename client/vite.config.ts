@@ -29,7 +29,7 @@ export default defineConfig(({ mode }) => ({
     exclude: ['shared'],
   },
   server: {
-    port: 5173,
+    port: 5100,
     proxy: {
       '/api': {
         target: apiProxyTarget,
