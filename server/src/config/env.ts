@@ -27,8 +27,6 @@ const envSchema = z
     DATABASE_URL: z.url().default('postgres://app:app@localhost:5433/app'),
     BLOB_ROOT: z.string().min(1).default('var/blobs'),
 
-    DEVTOOLS_ENABLED: z.preprocess(blankToUndefined, z.stringbool().optional()),
-
     FIELD_ENCRYPTION_KEY: z.preprocess(blankToUndefined, z.string().optional()),
     EMAIL_LOOKUP_PEPPER: z.preprocess(blankToUndefined, z.string().optional()),
 
@@ -55,13 +53,6 @@ const envSchema = z
         });
       }
     }
-    if (value.DEVTOOLS_ENABLED === true) {
-      ctx.addIssue({
-        code: 'custom',
-        path: ['DEVTOOLS_ENABLED'],
-        message: 'DEVTOOLS_ENABLED must stay off when NODE_ENV=production',
-      });
-    }
   });
 
 const parsed = envSchema.safeParse(process.env);
@@ -71,12 +62,11 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-const { FIELD_ENCRYPTION_KEY, EMAIL_LOOKUP_PEPPER, DEVTOOLS_ENABLED, ...rest } = parsed.data;
+const { FIELD_ENCRYPTION_KEY, EMAIL_LOOKUP_PEPPER, ...rest } = parsed.data;
 
 export const env = {
   ...rest,
   FIELD_ENCRYPTION_KEY: FIELD_ENCRYPTION_KEY ?? devOnlyDefaults.FIELD_ENCRYPTION_KEY,
   EMAIL_LOOKUP_PEPPER: EMAIL_LOOKUP_PEPPER ?? devOnlyDefaults.EMAIL_LOOKUP_PEPPER,
-  DEVTOOLS_ENABLED: DEVTOOLS_ENABLED ?? rest.NODE_ENV !== 'production',
 };
 export const isProduction = env.NODE_ENV === 'production';
