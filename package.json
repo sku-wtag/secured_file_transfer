@@ -16,6 +16,7 @@
   "scripts": {
     "dev": "concurrently -k -n server,client -c blue,magenta \"yarn dev:server\" \"yarn dev:client\"",
     "dev:client": "yarn workspace client dev",
+    "dev:devtools": "react-devtools",
     "dev:server": "yarn workspace server dev",
     "build": "yarn workspace shared build && yarn workspace server build && yarn workspace client build",
     "start": "yarn workspace server start",
@@ -39,6 +40,7 @@
     "eslint-plugin-simple-import-sort": "^14.0.0",
     "globals": "^17.11.0",
     "prettier": "^3.9.6",
+    "react-devtools": "^7.0.1",
     "typescript-eslint": "^8.67.0"
   },
   "allowScripts": {

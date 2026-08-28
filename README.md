@@ -77,6 +77,7 @@ Run from the repo root.
 | Script                              | What it does                                                 |
 | ----------------------------------- | ------------------------------------------------------------ |
 | `yarn dev`                          | Build `shared`, then both dev servers with HMR               |
+| `yarn dev:devtools`                 | Standalone React DevTools; the dev server auto-connects      |
 | `yarn build`                        | Build `shared`, then type-check and build the rest           |
 | `yarn start`                        | Run the built server                                         |
 | `yarn test`                         | `node --test` over server and shared, then Vitest for client |
@@ -91,6 +92,21 @@ Run from the repo root.
 
 Target a single workspace with `yarn workspace <name> <script>`, e.g.
 `yarn workspace client build`.
+
+### React DevTools
+
+`yarn dev:devtools` opens the standalone inspector on port 8097. The Vite dev
+server injects `<script src="http://localhost:8097">` ahead of the React runtime
+so the app connects on load; start it before or after the client, then reload the
+page. The plugin is `apply: 'serve'`, so `vite build` never emits the tag and
+production has no bridge to connect to. Order matters — the script has to run
+before React does, which is why it is injected rather than imported from
+`main.tsx`.
+
+Nothing to expose when the dev stack runs in Docker: the tag is fetched by your
+browser, so `localhost:8097` is your machine, not the container. Without the
+inspector running the request is refused and logged in the console, which is
+harmless. The browser extension needs none of this and still works on its own.
 
 ## Docker
 
