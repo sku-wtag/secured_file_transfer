@@ -185,6 +185,14 @@ Both Dockerfiles take the repository root as their build context — they need
 container, keep `TRUSTED_PROXY_HOPS` equal to the number of proxies ahead of the
 server, and point `SMTP_URL` at a real provider.
 
+The server writes ciphertext chunks as the unprivileged `node` user, so whatever
+is mounted at `BLOB_ROOT` has to belong to it. A Docker named volume inherits
+the image's ownership the first time it is used, which is why the Compose stack
+needs nothing; a cloud provider's attached disk is mounted empty and owned by
+`root`, and shadows whatever the image put there. `server/docker-entrypoint.sh`
+covers both: it starts as root only long enough to create and `chown` the blob
+root, then drops to `node` through `setpriv` before exec'ing the process.
+
 #### Two services on separate hosts
 
 The browser only ever calls `/api` on its own origin, so the `client` container

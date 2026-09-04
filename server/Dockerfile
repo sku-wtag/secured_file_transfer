@@ -26,9 +26,10 @@ WORKDIR /app
 COPY --from=prod-deps /app ./
 COPY --from=build /app/shared/dist shared/dist
 COPY --from=build /app/server/dist server/dist
-RUN mkdir -p "$BLOB_ROOT" && chown -R node:node /data
-USER node
+COPY server/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh && mkdir -p "$BLOB_ROOT" && chown -R node:node /data
 EXPOSE 3000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
   CMD ["node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))"]
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "server/dist/index.js"]
