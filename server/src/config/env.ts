@@ -20,7 +20,10 @@ const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3000),
-    APP_ORIGIN: z.url().default('http://localhost:5100'),
+    APP_ORIGIN: z
+      .url()
+      .transform((value) => new URL(value).origin)
+      .default('http://localhost:5100'),
     TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
 
     DATABASE_URL: z.url().default('postgres://app:app@localhost:5433/app'),

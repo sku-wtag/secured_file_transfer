@@ -137,7 +137,10 @@ SMTP URL. Two consequences worth knowing:
 - `APP_ORIGIN` is the one origin the server trusts — CORS, the CSRF `Origin`
   check in `middleware/csrf.ts`, and the links in outgoing mail all read it. It
   defaults to `http://localhost:${APP_PORT}` in this stack, so set it in `.env`
-  only for a real domain or a changed `APP_PORT`.
+  only for a real domain or a changed `APP_PORT`. `config/env.ts` reduces
+  whatever it is given to scheme, host, and port, because that is all a browser
+  ever puts in an `Origin` header — a trailing slash or a path is discarded
+  rather than silently failing every comparison.
 
 Ciphertext chunks live on the `blob-data` volume at `/data/blobs`; the database
 lives on `postgres-data`. Both survive `docker compose down`, and `down -v`
