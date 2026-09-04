@@ -44,7 +44,7 @@ passwordResetRouter.post(
       await sendMail({
         to: email,
         subject: 'Reset your password',
-        text: `Reset your password: ${env.PUBLIC_BASE_URL}/reset-password/confirm?uid=${user.id}&token=${token}`,
+        text: `Reset your password: ${env.APP_ORIGIN}/reset-password/confirm?uid=${user.id}&token=${token}`,
       });
       await recordAuditEvent(req, {
         eventType: 'auth.password_reset_requested',

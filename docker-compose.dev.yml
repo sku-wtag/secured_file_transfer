@@ -5,8 +5,7 @@ services:
     command: yarn workspace server dev
     environment:
       NODE_ENV: development
-      CLIENT_ORIGIN: ${DEV_ORIGIN:-http://localhost:5173}
-      PUBLIC_BASE_URL: ${DEV_ORIGIN:-http://localhost:5173}
+      APP_ORIGIN: http://localhost:${CLIENT_PORT:-5100}
       TRUSTED_PROXY_HOPS: 0
       BLOB_ROOT: /app/server/var/blobs
     ports:
@@ -24,12 +23,13 @@ services:
       target: build
     command: yarn workspace client dev
     environment:
+      CLIENT_PORT: ${CLIENT_PORT:-5100}
       API_PROXY_TARGET: http://server:3000
     depends_on:
       server:
         condition: service_started
     ports:
-      - '5173:5173'
+      - '${CLIENT_PORT:-5100}:${CLIENT_PORT:-5100}'
     volumes:
       - ./shared:/app/shared
       - ./client:/app/client

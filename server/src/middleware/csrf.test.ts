@@ -38,7 +38,7 @@ void test('POST with a matching cookie and header succeeds', async () => {
   const response = await request(testApp())
     .post('/')
     .set('Cookie', `${CSRF_COOKIE_NAME}=abc123`)
-    .set('Origin', env.CLIENT_ORIGIN)
+    .set('Origin', env.APP_ORIGIN)
     .set('X-CSRF-Token', 'abc123');
   assert.strictEqual(response.status, 200);
 });
@@ -47,7 +47,7 @@ void test('POST with a mismatched header is rejected', async () => {
   const response = await request(testApp())
     .post('/')
     .set('Cookie', `${CSRF_COOKIE_NAME}=abc123`)
-    .set('Origin', env.CLIENT_ORIGIN)
+    .set('Origin', env.APP_ORIGIN)
     .set('X-CSRF-Token', 'not-the-same-token');
   assert.strictEqual(response.status, 403);
 });

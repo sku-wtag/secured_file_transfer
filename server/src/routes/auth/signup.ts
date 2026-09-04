@@ -58,7 +58,7 @@ signupRouter.post(
     await sendMail({
       to: email,
       subject: 'Verify your email',
-      text: `Verify your account: ${env.PUBLIC_BASE_URL}/verify-email?uid=${userId}&token=${token}`,
+      text: `Verify your account: ${env.APP_ORIGIN}/verify-email?uid=${userId}&token=${token}`,
     });
     await recordAuditEvent(req, {
       eventType: 'auth.signup',

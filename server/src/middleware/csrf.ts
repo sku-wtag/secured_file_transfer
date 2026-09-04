@@ -6,7 +6,6 @@ import { generateToken } from '../crypto/random.js';
 import { HttpError } from './error-handler.js';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
-const allowedOrigins = new Set([env.CLIENT_ORIGIN, env.PUBLIC_BASE_URL]);
 
 function isStringCookie(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0;
@@ -26,7 +25,7 @@ export function requireCsrf(req: Request, _res: Response, next: NextFunction): v
   }
 
   const origin = req.headers.origin;
-  if (typeof origin === 'string' && !allowedOrigins.has(origin)) {
+  if (typeof origin === 'string' && origin !== env.APP_ORIGIN) {
     next(new HttpError(403, 'Origin not allowed'));
     return;
   }

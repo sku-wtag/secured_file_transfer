@@ -18,10 +18,10 @@ ciphertext — see [`plan.md`](plan.md) for the full design and
 yarn install
 cp .env.example .env         # optional; every value has a sane local default
 docker compose up -d postgres
-yarn dev                     # builds shared/, then client on :5173, server on :3000
+yarn dev                     # builds shared/, then client on :5100, server on :3000
 ```
 
-Migrations run automatically at server boot. Open <http://localhost:5173> and
+Migrations run automatically at server boot. Open <http://localhost:5100> and
 sign up — with `SMTP_URL` unset, verification and reset emails are written to
 `var/mail/*.eml` instead of sent.
 
@@ -134,9 +134,10 @@ SMTP URL. Two consequences worth knowing:
 
 - Because the cookies are `Secure`, use Chrome or Firefox, which accept them on
   `http://localhost`. Safari does not, and needs TLS in front.
-- `APP_ORIGIN` must match the address the browser uses. It becomes both
-  `CLIENT_ORIGIN` and `PUBLIC_BASE_URL`, and `middleware/csrf.ts` rejects any
-  other `Origin` on an unsafe method.
+- `APP_ORIGIN` is the one origin the server trusts — CORS, the CSRF `Origin`
+  check in `middleware/csrf.ts`, and the links in outgoing mail all read it. It
+  defaults to `http://localhost:${APP_PORT}` in this stack, so set it in `.env`
+  only for a real domain or a changed `APP_PORT`.
 
 Ciphertext chunks live on the `blob-data` volume at `/data/blobs`; the database
 lives on `postgres-data`. Both survive `docker compose down`, and `down -v`
@@ -155,7 +156,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up
 ```
 
 The overlay stops at each image's `build` stage, bind-mounts `shared/`,
-`server/`, and `client/`, and runs `tsx watch` and Vite on <http://localhost:5173>
+`server/`, and `client/`, and runs `tsx watch` and Vite on <http://localhost:5100>
 with `NODE_ENV=development`. `node_modules` stays in named volumes so the
 container's Linux binaries are not shadowed by a host install — `@node-rs/argon2`
 and the Rolldown bindings are platform-specific. Those volumes are seeded once
@@ -242,6 +243,17 @@ with `"module": "nodenext"`; the extension refers to the emitted file.
 missing or malformed variable fails immediately instead of surfacing as
 `undefined` inside a request handler. Add new variables to that schema and to
 `.env.example`. Never commit `.env` — `.gitignore` excludes it.
+
+`.env.example` is grouped into three lists: **Backend** (the zod schema above),
+**Frontend** (`CLIENT_PORT` and `API_PROXY_TARGET`, read by
+`client/vite.config.ts` for the dev server only — the app calls `/api` on its own
+origin, so there are no `VITE_` variables and nothing is inlined into the
+bundle), and **Docker Compose only** (`APP_PORT`, `MAILPIT_UI_PORT`).
+
+The browser-facing origin is a single variable, `APP_ORIGIN`. Left unset it
+defaults per stack — `http://localhost:5100` for `yarn dev`,
+`http://localhost:8080` for `docker compose up` — so it needs a value only for a
+real domain or a changed `CLIENT_PORT`/`APP_PORT`.
 
 `FIELD_ENCRYPTION_KEY`, `EMAIL_LOOKUP_PEPPER`, and `SMTP_URL` have insecure or
 absent local defaults and are required whenever `NODE_ENV=production`; boot

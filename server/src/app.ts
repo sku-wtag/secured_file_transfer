@@ -17,7 +17,7 @@ export function createApp() {
 
   app.use(requestContext());
   app.use(securityHeaders());
-  app.use(cors({ origin: env.CLIENT_ORIGIN, credentials: true }));
+  app.use(cors({ origin: env.APP_ORIGIN, credentials: true }));
   app.use(express.json({ limit: '64kb' }));
   app.use(express.urlencoded({ extended: true, limit: '64kb' }));
   app.use(cookieParser());

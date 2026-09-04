@@ -46,8 +46,7 @@ services:
       PORT: 3000
       DATABASE_URL: postgres://app:app@postgres:5432/app
       BLOB_ROOT: /data/blobs
-      CLIENT_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
-      PUBLIC_BASE_URL: ${APP_ORIGIN:-http://localhost:8080}
+      APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
       TRUSTED_PROXY_HOPS: 1
       SMTP_URL: ${SMTP_URL:-smtp://mailpit:1025}
       MAIL_FROM: ${MAIL_FROM:-no-reply@example.com}
