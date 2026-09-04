@@ -11,6 +11,7 @@ import { isValidGeneratedId } from '../crypto/random.js';
 import { db } from '../db/client.js';
 import { transferChunks, transfers } from '../db/schema/index.js';
 import { HttpError } from '../middleware/error-handler.js';
+import { ChunkAlreadyStoredError } from '../storage/blob-store.js';
 import { blobStore } from '../storage/instance.js';
 
 async function loadUploadingTransfer(transferId: unknown, ownerId: string) {
@@ -68,8 +69,11 @@ uploadRouter.put(
 
     try {
       await blobStore.write(transfer.id, chunkIndex, body);
-    } catch {
-      throw new HttpError(409, 'Chunk already uploaded');
+    } catch (error) {
+      if (error instanceof ChunkAlreadyStoredError) {
+        throw new HttpError(409, 'Chunk already uploaded');
+      }
+      throw error;
     }
 
     await db.insert(transferChunks).values({

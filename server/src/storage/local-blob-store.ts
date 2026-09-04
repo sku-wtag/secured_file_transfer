@@ -2,7 +2,7 @@ import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import { isValidGeneratedId } from '../crypto/random.js';
-import type { BlobStore } from './blob-store.js';
+import { type BlobStore, ChunkAlreadyStoredError } from './blob-store.js';
 
 function transferDir(root: string, transferId: string): string {
   if (!isValidGeneratedId(transferId)) {
@@ -22,12 +22,23 @@ function chunkPath(root: string, transferId: string, chunkIndex: number): string
   return path.join(transferDir(root, transferId), String(chunkIndex));
 }
 
+function isFileAlreadyExists(error: unknown): boolean {
+  return error instanceof Error && 'code' in error && error.code === 'EEXIST';
+}
+
 export function createLocalBlobStore(root: string): BlobStore {
   return {
     async write(transferId, chunkIndex, data) {
       const dir = transferDir(root, transferId);
       await mkdir(dir, { recursive: true });
-      await writeFile(chunkPath(root, transferId, chunkIndex), data, { flag: 'wx' });
+      try {
+        await writeFile(chunkPath(root, transferId, chunkIndex), data, { flag: 'wx' });
+      } catch (error) {
+        if (isFileAlreadyExists(error)) {
+          throw new ChunkAlreadyStoredError(transferId, chunkIndex);
+        }
+        throw error;
+      }
     },
 
     async read(transferId, chunkIndex) {
