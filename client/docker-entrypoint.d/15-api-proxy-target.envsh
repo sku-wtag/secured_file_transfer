@@ -1,0 +1,18 @@
+#!/bin/sh
+
+API_PROXY_TARGET="${API_PROXY_TARGET:-http://server:3000}"
+API_PROXY_TARGET="${API_PROXY_TARGET%/}"
+
+api_proxy_authority="${API_PROXY_TARGET#*://}"
+API_PROXY_AUTHORITY="${api_proxy_authority%%/*}"
+API_PROXY_SSL_NAME="${API_PROXY_AUTHORITY%%:*}"
+
+NGINX_PORT="${PORT:-80}"
+
+NGINX_RESOLVER="$(awk '$1 == "nameserver" && $2 !~ /:/ { printf "%s ", $2 }' /etc/resolv.conf)"
+NGINX_RESOLVER="${NGINX_RESOLVER% }"
+if [ -z "$NGINX_RESOLVER" ]; then
+  NGINX_RESOLVER="127.0.0.11"
+fi
+
+export API_PROXY_TARGET API_PROXY_AUTHORITY API_PROXY_SSL_NAME NGINX_PORT NGINX_RESOLVER

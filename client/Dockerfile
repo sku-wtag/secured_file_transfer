@@ -18,6 +18,10 @@ COPY client/src client/src
 RUN yarn workspace shared build && yarn workspace client build
 
 FROM nginx:1.29-alpine AS runtime
-COPY client/nginx.conf /etc/nginx/conf.d/default.conf
+RUN apk add --no-cache ca-certificates
+ENV NGINX_ENVSUBST_FILTER="^(API_PROXY_TARGET|API_PROXY_AUTHORITY|API_PROXY_SSL_NAME|NGINX_PORT|NGINX_RESOLVER)\$"
+COPY client/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY client/docker-entrypoint.d/15-api-proxy-target.envsh /docker-entrypoint.d/15-api-proxy-target.envsh
+RUN chmod +x /docker-entrypoint.d/15-api-proxy-target.envsh
 COPY --from=build /app/client/dist /usr/share/nginx/html
 EXPOSE 80

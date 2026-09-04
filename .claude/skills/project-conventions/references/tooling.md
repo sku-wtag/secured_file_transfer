@@ -114,9 +114,18 @@ it. A dependency added to a workspace needs no Dockerfile change; a new
 top-level file that the build reads does — the stages copy manifests and sources
 explicitly to keep the dependency layer cacheable.
 
-`client/nginx.conf` serves the SPA in production, so it — not helmet — sets the
-security headers on the HTML document. Its CSP directives duplicate
+`client/nginx.conf.template` serves the SPA in production, so it — not helmet —
+sets the security headers on the HTML document. Its CSP directives duplicate
 `productionCsp` in `server/src/middleware/security-headers.ts` by necessity;
 change one and you must change the other. Its `client_max_body_size` covers
 `MAX_CHUNK_BYTES` plus the GCM tag, so raising the chunk size means raising it
 too.
+
+It is a template, not a finished config: the nginx image renders it at container
+start through `/etc/nginx/templates`, substituting only the names matched by
+`NGINX_ENVSUBST_FILTER` in `client/Dockerfile` so that nginx's own `$host`,
+`$uri`, and friends survive. `client/docker-entrypoint.d/15-api-proxy-target.envsh`
+runs first and derives those names from `API_PROXY_TARGET` — the upstream, its
+`Host` header, its TLS server name, the resolver from `/etc/resolv.conf`, and the
+listen port from `PORT`. Adding a placeholder to the template means adding its
+name to the filter, or envsubst will leave it untouched.

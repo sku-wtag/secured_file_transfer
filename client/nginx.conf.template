@@ -1,5 +1,10 @@
+map $http_x_forwarded_proto $forwarded_proto {
+  default $scheme;
+  "~."    $http_x_forwarded_proto;
+}
+
 server {
-  listen 80;
+  listen ${NGINX_PORT};
   server_name _;
   server_tokens off;
 
@@ -12,16 +17,21 @@ server {
   gzip_min_length 1024;
   gzip_types text/css text/javascript application/javascript application/json image/svg+xml;
 
-  resolver 127.0.0.11 valid=10s ipv6=off;
+  resolver ${NGINX_RESOLVER} valid=10s ipv6=off;
 
   location /api/ {
-    set $api_origin http://server:3000;
+    set $api_origin ${API_PROXY_TARGET};
     proxy_pass $api_origin$request_uri;
     proxy_http_version 1.1;
-    proxy_set_header Host $host;
+    proxy_ssl_server_name on;
+    proxy_ssl_name ${API_PROXY_SSL_NAME};
+    proxy_ssl_verify on;
+    proxy_ssl_verify_depth 3;
+    proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+    proxy_set_header Host ${API_PROXY_AUTHORITY};
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Proto $forwarded_proto;
     proxy_request_buffering off;
     proxy_buffering off;
     proxy_read_timeout 360s;

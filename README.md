@@ -143,8 +143,8 @@ Ciphertext chunks live on the `blob-data` volume at `/data/blobs`; the database
 lives on `postgres-data`. Both survive `docker compose down`, and `down -v`
 deletes them.
 
-nginx terminates the browser connection, so `client/nginx.conf` — not helmet —
-sets the security headers on the HTML document. Its CSP directives are a copy of
+nginx terminates the browser connection, so `client/nginx.conf.template` — not
+helmet — sets the security headers on the HTML document. Its CSP directives are a copy of
 `productionCsp` in `server/src/middleware/security-headers.ts` and the two must
 be changed together. `client_max_body_size` there is likewise sized for
 `MAX_CHUNK_BYTES` plus the GCM tag; raising the chunk size means raising both.
@@ -181,6 +181,31 @@ Both Dockerfiles take the repository root as their build context — they need
 `yarn.lock` and `shared/`. Put TLS termination in front of the `client`
 container, keep `TRUSTED_PROXY_HOPS` equal to the number of proxies ahead of the
 server, and point `SMTP_URL` at a real provider.
+
+#### Two services on separate hosts
+
+The browser only ever calls `/api` on its own origin, so the `client` container
+proxies `/api/` to the server for every deployment shape. `API_PROXY_TARGET`
+names that upstream and defaults to `http://server:3000`, the Compose service.
+Split the two across hosts — Render, Fly, two Kubernetes services — and the
+`client` container needs the server's own URL instead:
+
+```
+API_PROXY_TARGET=https://secured-server.onrender.com
+```
+
+`client/docker-entrypoint.d/15-api-proxy-target.envsh` reads it at container
+start, derives the upstream `Host` header and TLS server name from it, takes the
+DNS resolver from `/etc/resolv.conf`, and listens on `PORT` when the platform
+sets one. Leaving `API_PROXY_TARGET` unset on a split deployment leaves nginx
+pointed at a `server` host that does not exist there, and every `/api` call
+answers `502`.
+
+The server still needs `APP_ORIGIN` set to the **client's** public URL, not its
+own: that is the origin the browser sends, and CORS, the CSRF `Origin` check,
+and outgoing mail links all read it. `TRUSTED_PROXY_HOPS` counts every proxy
+ahead of the server — the platform's edge in front of the client container, the
+client container's nginx, and the platform's edge in front of the server itself.
 
 ## Linting and formatting
 
