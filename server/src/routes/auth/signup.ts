@@ -3,7 +3,6 @@ import { Router } from 'express';
 import { z } from 'zod';
 
 import { recordAuditEvent } from '../../audit/audit-log.js';
-import { sendMail } from '../../auth/mailer.js';
 import { issueOneTimeToken } from '../../auth/one-time-tokens.js';
 import { hashPassword, MIN_PASSWORD_LENGTH } from '../../auth/password.js';
 import { env } from '../../config/env.js';
@@ -12,6 +11,7 @@ import { encryptField } from '../../crypto/field-encryption.js';
 import { generateId } from '../../crypto/random.js';
 import { db } from '../../db/client.js';
 import { users } from '../../db/schema/index.js';
+import { enqueueMail } from '../../jobs/queues.js';
 import { HttpError } from '../../middleware/error-handler.js';
 import { rateLimit } from '../../middleware/rate-limit.js';
 
@@ -55,7 +55,7 @@ signupRouter.post(
     });
 
     const token = await issueOneTimeToken(userId, 'email_verification');
-    await sendMail({
+    await enqueueMail({
       to: email,
       subject: 'Verify your email',
       text: `Verify your account: ${env.APP_ORIGIN}/verify-email?uid=${userId}&token=${token}`,

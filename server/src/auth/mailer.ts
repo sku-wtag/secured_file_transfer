@@ -1,3 +1,4 @@
+import { lookup } from 'node:dns/promises';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -7,8 +8,14 @@ import { env } from '../config/env.js';
 import { logger } from '../logger.js';
 
 const DEV_MAIL_DIR = 'var/mail';
+const IPV4 = 4;
+const IMPLICIT_TLS_PORT = 465;
+const STARTTLS_PORT = 587;
+const CONNECTION_TIMEOUT_MS = 10_000;
+const GREETING_TIMEOUT_MS = 10_000;
+const SOCKET_TIMEOUT_MS = 20_000;
 
-interface Mail {
+export interface Mail {
   to: string;
   subject: string;
   text: string;
@@ -21,8 +28,31 @@ async function writeDevMail(mail: Mail, rendered: string): Promise<void> {
   logger.info({ file: fileName }, 'wrote dev email to disk');
 }
 
+async function ipv4SmtpOptions(smtpUrl: string) {
+  const url = new URL(smtpUrl);
+  const secure = url.protocol === 'smtps:';
+  const { address } = await lookup(url.hostname, { family: IPV4 });
+  return {
+    host: address,
+    port: url.port ? Number(url.port) : secure ? IMPLICIT_TLS_PORT : STARTTLS_PORT,
+    secure,
+    tls: { servername: url.hostname },
+    connectionTimeout: CONNECTION_TIMEOUT_MS,
+    greetingTimeout: GREETING_TIMEOUT_MS,
+    socketTimeout: SOCKET_TIMEOUT_MS,
+    ...(url.username
+      ? {
+          auth: {
+            user: decodeURIComponent(url.username),
+            pass: decodeURIComponent(url.password),
+          },
+        }
+      : {}),
+  };
+}
+
 async function sendViaSmtp(smtpUrl: string, mail: Mail): Promise<void> {
-  const transport = nodemailer.createTransport(smtpUrl);
+  const transport = nodemailer.createTransport(await ipv4SmtpOptions(smtpUrl));
   await transport.sendMail({
     from: env.MAIL_FROM,
     to: mail.to,

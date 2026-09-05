@@ -18,6 +18,20 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:8-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '${REDIS_PORT:-6380}:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   mailpit:
     image: axllent/mailpit:latest
     restart: unless-stopped
@@ -39,12 +53,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
       mailpit:
         condition: service_started
     environment:
       NODE_ENV: production
       PORT: 3000
       DATABASE_URL: postgres://app:app@postgres:5432/app
+      REDIS_URL: redis://redis:6379
       BLOB_ROOT: /data/blobs
       APP_ORIGIN: ${APP_ORIGIN:-http://localhost:8080}
       TRUSTED_PROXY_HOPS: 1
@@ -69,5 +86,6 @@ services:
 
 volumes:
   postgres-data:
+  redis-data:
   blob-data:
   mailpit-data:

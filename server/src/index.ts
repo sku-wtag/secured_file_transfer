@@ -3,36 +3,33 @@ import type { Server } from 'node:http';
 import { createApp } from './app.js';
 import { env } from './config/env.js';
 import { runMigrations } from './db/migrate.js';
-import { JANITOR_INTERVAL_MS, runJanitor } from './jobs/janitor.js';
+import { startBackgroundJobs, stopBackgroundJobs } from './jobs/workers.js';
 import { logger } from './logger.js';
 
 const KEEP_ALIVE_TIMEOUT_MS = 65_000;
 const HEADERS_TIMEOUT_MS = 66_000;
 const REQUEST_TIMEOUT_MS = 5 * 60 * 1000;
 
-function exitAfterInFlightRequestsFinish(server: Server, janitorInterval: NodeJS.Timeout): void {
+function exitAfterInFlightRequestsFinish(server: Server): void {
   for (const signal of ['SIGINT', 'SIGTERM'] as const) {
     process.on(signal, () => {
       logger.info({ signal }, 'shutting down');
-      clearInterval(janitorInterval);
-      server.close(() => process.exit(0));
+      server.close(() => {
+        stopBackgroundJobs().then(
+          () => process.exit(0),
+          (err: unknown) => {
+            logger.error({ err }, 'failed to stop background workers');
+            process.exit(1);
+          },
+        );
+      });
     });
   }
 }
 
-function startJanitor(): NodeJS.Timeout {
-  runJanitor().catch((err: unknown) => {
-    logger.error({ err }, 'janitor run failed');
-  });
-  return setInterval(() => {
-    runJanitor().catch((err: unknown) => {
-      logger.error({ err }, 'janitor run failed');
-    });
-  }, JANITOR_INTERVAL_MS);
-}
-
 async function main(): Promise<void> {
   await runMigrations();
+  await startBackgroundJobs();
 
   const app = createApp();
   const server = app.listen(env.PORT, () => {
@@ -43,7 +40,7 @@ async function main(): Promise<void> {
   server.headersTimeout = HEADERS_TIMEOUT_MS;
   server.requestTimeout = REQUEST_TIMEOUT_MS;
 
-  exitAfterInFlightRequestsFinish(server, startJanitor());
+  exitAfterInFlightRequestsFinish(server);
 }
 
 main().catch((err: unknown) => {

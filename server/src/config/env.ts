@@ -27,6 +27,7 @@ const envSchema = z
     TRUSTED_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
 
     DATABASE_URL: z.url().default('postgres://app:app@localhost:5433/app'),
+    REDIS_URL: z.url().default('redis://localhost:6380'),
     BLOB_ROOT: z.string().min(1).default('var/blobs'),
 
     FIELD_ENCRYPTION_KEY: z.preprocess(blankToUndefined, z.string().optional()),

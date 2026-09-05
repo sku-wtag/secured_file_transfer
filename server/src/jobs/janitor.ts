@@ -6,7 +6,6 @@ import { logger } from '../logger.js';
 import { purgeTransfer } from '../transfers/lifecycle.js';
 
 const ABANDONED_UPLOAD_HOURS = 24;
-export const JANITOR_INTERVAL_MS = 15 * 60 * 1000;
 
 async function purgeExpiredTransfers(): Promise<number> {
   const expired = await db.query.transfers.findMany({

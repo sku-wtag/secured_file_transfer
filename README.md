@@ -10,14 +10,14 @@ ciphertext — see [`plan.md`](plan.md) for the full design and
 
 - Node `>=22.12.0` (`.nvmrc` pins the version used here: 24)
 - Yarn 1.22 (workspaces)
-- Docker, for PostgreSQL locally and for the full containerized stack
+- Docker, for PostgreSQL and Redis locally and for the full containerized stack
 
 ## Getting started
 
 ```bash
 yarn install
 cp .env.example .env         # optional; every value has a sane local default
-docker compose up -d postgres
+docker compose up -d postgres redis
 yarn dev                     # builds shared/, then client on :5100, server on :3000
 ```
 
@@ -47,9 +47,10 @@ To run everything in containers instead, see [Docker](#docker).
 │       ├── db/             # drizzle schema, client, migrations
 │       ├── storage/        # blob store (local filesystem behind an interface)
 │       ├── audit/          # append-only audit log
+│       ├── jobs/           # BullMQ queues and workers: mail, janitor
 │       ├── middleware/
 │       └── routes/
-├── docker-compose.yml       # full stack: postgres, mailpit, server, client
+├── docker-compose.yml       # full stack: postgres, redis, mailpit, server, client
 ├── docker-compose.dev.yml   # overlay: bind-mounted sources, HMR
 ├── eslint.config.js         # one flat config for all three workspaces
 └── .prettierrc.json
@@ -108,11 +109,43 @@ browser, so `localhost:8097` is your machine, not the container. Without the
 inspector running the request is refused and logged in the console, which is
 harmless. The browser extension needs none of this and still works on its own.
 
+## Background jobs
+
+Anything a request should not wait for runs as a [BullMQ](https://docs.bullmq.io)
+job on Redis, so a slow SMTP handshake never delays a response and a failed
+delivery is retried instead of lost. `server/src/jobs/queues.ts` declares the
+queues and the producer functions; `server/src/jobs/workers.ts` starts the
+workers, which `index.ts` boots before the server listens and closes on
+`SIGTERM` after in-flight requests finish.
+
+| Queue         | Job         | Producer                                  |
+| ------------- | ----------- | ----------------------------------------- |
+| `mail`        | `send-mail` | `enqueueMail` — signup and password reset |
+| `maintenance` | `janitor`   | a repeatable scheduler, every 15 minutes  |
+
+Jobs get five attempts with exponential backoff from 30 seconds, and completed
+and failed jobs are trimmed so the keyspace stays bounded. Failures are logged
+once per attempt by the `failed` listener in `workers.ts` — the job payload is
+never logged, because a mail job holds a recipient address.
+
+Verification and reset mail is therefore sent _after_ the `202` response. The
+signup route still awaits `enqueueMail`, because handing the job to Redis is the
+part that must not be lost: the queue connection sets `skipWaitingForReady` with
+a five second `commandTimeout`, so an unreachable Redis fails the request
+quickly rather than hanging it. Worker connections need
+`maxRetriesPerRequest: null` for their blocking reads, which is why the two
+connections are configured separately.
+
+Moving the janitor from `setInterval` onto a queue also makes it safe to run
+more than one server: a repeatable job is claimed by a single worker, so the
+purge no longer races with itself across instances.
+
 ## Docker
 
 `docker compose up --build` runs the whole application: nginx serving the built
-SPA and reverse-proxying `/api`, the compiled Express server, PostgreSQL, and
-[Mailpit](https://mailpit.axllent.org/) as a local mail sink.
+SPA and reverse-proxying `/api`, the compiled Express server, PostgreSQL, Redis
+for the job queues, and [Mailpit](https://mailpit.axllent.org/) as a local mail
+sink.
 
 ```bash
 cp .env.example .env
@@ -126,6 +159,7 @@ docker compose up --build -d
 | <http://localhost:8080> | The application (`APP_PORT`)        |
 | <http://localhost:8025> | Mailpit, for verification links     |
 | `localhost:5433`        | PostgreSQL, also used by `yarn dev` |
+| `localhost:6380`        | Redis, also used by `yarn dev`      |
 
 The stack runs `NODE_ENV=production`, which is the point: it exercises the
 production CSP, `__Host-` cookie prefixes, and `Secure` cookies, and it
@@ -143,8 +177,8 @@ SMTP URL. Two consequences worth knowing:
   rather than silently failing every comparison.
 
 Ciphertext chunks live on the `blob-data` volume at `/data/blobs`; the database
-lives on `postgres-data`. Both survive `docker compose down`, and `down -v`
-deletes them.
+lives on `postgres-data`, and the queues on `redis-data`. All three survive
+`docker compose down`, and `down -v` deletes them.
 
 nginx terminates the browser connection, so `client/nginx.conf.template` — not
 helmet — sets the security headers on the HTML document. Its CSP directives are a copy of
@@ -284,7 +318,8 @@ missing or malformed variable fails immediately instead of surfacing as
 **Frontend** (`CLIENT_PORT` and `API_PROXY_TARGET`, read by
 `client/vite.config.ts` for the dev server only — the app calls `/api` on its own
 origin, so there are no `VITE_` variables and nothing is inlined into the
-bundle), and **Docker Compose only** (`APP_PORT`, `MAILPIT_UI_PORT`).
+bundle), and **Docker Compose only** (`APP_PORT`, `MAILPIT_UI_PORT`,
+`REDIS_PORT`).
 
 The browser-facing origin is a single variable, `APP_ORIGIN`. Left unset it
 defaults per stack — `http://localhost:5100` for `yarn dev`,
